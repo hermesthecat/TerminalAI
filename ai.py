@@ -87,21 +87,21 @@ def cache(maxsize=128):
 
 
 def get_api_key():
-    # load the api key from .config/openai
-    config_file = os.path.expanduser("~/.config/openai")
+    # load the api key from CACHE_FOLDER/openai
+    config_file = os.path.expanduser(CACHE_FOLDER + "/openai")
     if os.path.exists(config_file):
         with open(config_file) as f:
             return f.read().strip()
     else:
-        print("No api key found. Please create a file ~/.config/openai with your api key in it.")
+        print("No api key found. Please create a file " + CACHE_FOLDER + "/openai with your api key in it.")
         # ask for key and store it
         api_key = input("Please enter your OpenAI API key: ")
         if api_key == "":
             print("No api key provided. Exiting.")
             sys.exit(1)
         # make sure the directory exists
-        if not os.path.exists(os.path.expanduser("~/.config")):
-            os.mkdir(os.path.expanduser("~/.config"))
+        if not os.path.exists(os.path.expanduser(CACHE_FOLDER)):
+            os.mkdir(os.path.expanduser(CACHE_FOLDER))
         with open(config_file, "w") as f:
             f.write(api_key)
 
@@ -109,8 +109,8 @@ def get_api_key():
 
 
 def get_api_base_url():
-    # load the api base url from .config/openai_base_url
-    config_file = os.path.expanduser("~/.config/openai_base_url")
+    # load the api base url from CACHE_FOLDER/openai_base_url
+    config_file = os.path.expanduser(CACHE_FOLDER + "/openai_base_url")
     if os.path.exists(config_file):
         with open(config_file) as f:
             base_url = f.read().strip()
@@ -119,13 +119,148 @@ def get_api_base_url():
 
 
 def get_model_name():
-    # load the model name from .config/openai_model
-    config_file = os.path.expanduser("~/.config/openai_model")
+    # load the model name from CACHE_FOLDER/openai_model
+    config_file = os.path.expanduser(CACHE_FOLDER + "/openai_model")
     if os.path.exists(config_file):
         with open(config_file) as f:
             model = f.read().strip()
             return model if model else "gpt-4o-mini"
     return "gpt-4o-mini"
+
+
+def get_safety_mode():
+    # load safety mode from CACHE_FOLDER/openai_safety_mode
+    # 0 = always ask (default), 1 = auto-run safe commands
+    config_file = os.path.expanduser(CACHE_FOLDER + "/openai_safety_mode")
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            try:
+                mode = int(f.read().strip())
+                return mode if mode in [0, 1] else 0
+            except:
+                return 0
+    return 0
+
+
+def analyze_command_safety(cmd):
+    """
+    Analyzes a command for safety risks
+    Returns: (is_safe, reason)
+    - is_safe: boolean, True if command is considered safe
+    - reason: string explaining the safety assessment
+    """
+    # List of dangerous commands/patterns
+    dangerous_patterns = [
+        # System modification
+        r"\brm\s+(-[rf]+\s+)?(\/|~|\$HOME|\${HOME}|\$USER|\${USER})",  # rm with root/home paths
+        r"\bmv\s+.+\s+(\/|~|\$HOME|\${HOME}|\$USER|\${USER})",  # mv to sensitive locations
+        r"\bdd\s+",  # dd commands
+        r"\bformat\s+",  # format commands
+        r"\bmkfs\s+",  # filesystem creation
+        r"del\s+.*\/[QqSs]",  # Windows delete with /Q or /S flags
+        
+        # Privilege escalation
+        r"\bsudo\s+",  # sudo commands
+        r"\bsu\s+",  # su commands
+        r"\brunas\s+",  # Windows runas
+        
+        # Remote execution
+        r"\bssh\s+.+\s+-exec",  # ssh with exec
+        r"\btelnet\s+",  # telnet
+        
+        # Network/firewall
+        r"\biptables\s+-(A|D|P|F|X|Z|I|R)\s+",  # iptables modifications
+        r"\bnetsh\s+firewall\s+",  # Windows firewall changes
+        r"\bnetsh\s+advfirewall\s+",  # Windows advanced firewall
+        r"\broute\s+add\s+",  # route modifications
+        
+        # File permissions
+        r"\bchmod\s+777\s+",  # chmod with 777
+        r"\bchmod\s+[+]x\s+",  # chmod adding execute
+        r"\bicacls\s+.*\s+\/grant\s+",  # Windows permission changes
+        
+        # Process management
+        r"\bkill\s+-9\s+",  # kill -9
+        r"\bpkill\s+-9\s+",  # pkill -9
+        r"\btaskkill\s+\/F\s+",  # forceful taskkill
+        
+        # System configuration
+        r"\bsystemctl\s+(stop|disable|mask)\s+",  # systemctl stopping services
+        r"\bservice\s+.+\s+stop\s+",  # stopping services
+        r"\bsc\s+stop\s+",  # Windows service stopping
+        
+        # Downloading/executing
+        r"curl\s+.+\s+\|\s+sh",  # piping curl to shell
+        r"wget\s+.+\s+\|\s+sh",  # piping wget to shell
+        r"curl\s+.+\s+\|\s+bash",  # piping curl to bash
+        r"wget\s+.+\s+\|\s+bash",  # piping wget to bash
+        r"powershell\s+-e\s+",  # encoded PowerShell
+        r"powershell\s+.*\s+iex\s+",  # PowerShell invoke-expression
+        r"powershell\s+.*\s+downloadstring\s+",  # PowerShell download and execute
+        
+        # Data exposure
+        r"\bcat\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)",  # reading sensitive files
+        r"\btype\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)",  # Windows reading sensitive files
+        r"\bgrep\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)",  # grepping sensitive files
+    ]
+    
+    # List of safe commands/patterns (even if they match dangerous patterns)
+    safe_patterns = [
+        r"\bls\s+",  # listing files
+        r"\bdir\s+",  # Windows listing files
+        r"\becho\s+",  # echo commands
+        r"\bpwd\s+",  # print working directory
+        r"\bcd\s+",  # change directory
+        r"\bwhoami\s*$",  # whoami
+        r"\bdate\s*$",  # date
+        r"\btime\s*$",  # time
+        r"\bclear\s*$",  # clear screen
+        r"\bcls\s*$",  # Windows clear screen
+        r"\bhistory\s*$",  # command history
+        r"\bhelp\s+",  # help commands
+        r"\bman\s+",  # manual pages
+        r"\bfind\s+",  # find commands (generally safe)
+        r"\bfindstr\s+",  # Windows find in strings
+        r"\bgrep\s+",  # grep (unless on sensitive files)
+        r"\bping\s+",  # ping commands
+        r"\bnetstat\s+",  # network statistics
+        r"\bipconfig\s*$",  # Windows IP configuration
+        r"\bifconfig\s*$",  # IP configuration
+        r"\bps\s+",  # process status
+        r"\btasklist\s*$",  # Windows process list
+        r"\btop\s*$",  # top processes
+        r"\bdf\s*$",  # disk free space
+        r"\bdu\s+",  # disk usage
+        r"\bfree\s*$",  # memory usage
+        r"\buname\s+",  # system information
+        r"\bsysteminfo\s*$",  # Windows system information
+        r"\bver\s*$",  # Windows version
+    ]
+
+    # First check if it's a known safe command
+    for pattern in safe_patterns:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            return True, "Command appears to be safe (basic system information or navigation)"
+    
+    # Then check for dangerous patterns
+    for pattern in dangerous_patterns:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            return False, f"Command contains potentially dangerous pattern: {pattern}"
+    
+    # Check for pipe to shell
+    if "|" in cmd and any(shell in cmd for shell in ["sh", "bash", "powershell", "cmd"]):
+        return False, "Command pipes output to a shell, which could be dangerous"
+    
+    # Check for redirection to system files
+    if ">" in cmd and any(path in cmd for path in ["/etc", "/bin", "/sbin", "/usr", "C:\\Windows", "%WINDIR%"]):
+        return False, "Command redirects output to system directories"
+    
+    # Check for commands that might download or execute code
+    if any(cmd.startswith(download) for download in ["wget", "curl", "Invoke-WebRequest"]):
+        return False, "Command downloads content from the internet"
+    
+    # If no dangerous patterns found, consider it moderately safe
+    return True, "No obvious dangerous patterns detected"
 
 
 def setup_api_configuration():
@@ -134,7 +269,7 @@ def setup_api_configuration():
     
     # Current API key
     current_key = ""
-    config_file = os.path.expanduser("~/.config/openai")
+    config_file = os.path.expanduser(CACHE_FOLDER + "/openai")
     if os.path.exists(config_file):
         with open(config_file) as f:
             current_key = f.read().strip()
@@ -143,7 +278,7 @@ def setup_api_configuration():
         print("No API key configured")
     
     # Current base URL
-    base_url_file = os.path.expanduser("~/.config/openai_base_url")
+    base_url_file = os.path.expanduser(CACHE_FOLDER + "/openai_base_url")
     current_base_url = ""
     if os.path.exists(base_url_file):
         with open(base_url_file) as f:
@@ -156,14 +291,20 @@ def setup_api_configuration():
     current_model = get_model_name()
     print(f"Current model: {current_model}")
     
+    # Current safety mode
+    safety_mode = get_safety_mode()
+    safety_mode_desc = "Always ask for confirmation" if safety_mode == 0 else "Auto-run safe commands"
+    print(f"Current safety mode: {safety_mode_desc}")
+    
     print("\nOptions:")
     print("1. Update API key")
     print("2. Update API base URL (for OpenAI-compatible APIs)")
     print("3. Update model name")
-    print("4. Reset to OpenAI defaults")
-    print("5. Continue with current settings")
+    print("4. Update safety mode")
+    print("5. Reset to OpenAI defaults")
+    print("6. Continue with current settings")
     
-    choice = input("\nSelect option (1-5): ").strip()
+    choice = input("\nSelect option (1-6): ").strip()
     
     if choice == "1":
         new_key = input("Enter new API key: ").strip()
@@ -210,7 +351,7 @@ def setup_api_configuration():
         
         new_model = input(f"\nEnter model name (current: {current_model}): ").strip()
         if new_model:
-            model_file = os.path.expanduser("~/.config/openai_model")
+            model_file = os.path.expanduser(CACHE_FOLDER + "/openai_model")
             os.makedirs(os.path.dirname(model_file), exist_ok=True)
             with open(model_file, "w") as f:
                 f.write(new_model)
@@ -219,17 +360,38 @@ def setup_api_configuration():
             print("Model not changed")
     
     elif choice == "4":
+        print("\nSafety Modes:")
+        print("0 - Always ask for confirmation before executing commands (default)")
+        print("1 - Auto-run commands that appear safe, ask for confirmation on potentially dangerous commands")
+        
+        try:
+            new_mode = int(input("\nEnter safety mode (0 or 1): ").strip())
+            if new_mode in [0, 1]:
+                safety_file = os.path.expanduser(CACHE_FOLDER + "/openai_safety_mode")
+                os.makedirs(os.path.dirname(safety_file), exist_ok=True)
+                with open(safety_file, "w") as f:
+                    f.write(str(new_mode))
+                
+                mode_desc = "Always ask for confirmation" if new_mode == 0 else "Auto-run safe commands"
+                print(f"Safety mode set to: {mode_desc}")
+            else:
+                print("Invalid mode. Safety mode not changed.")
+        except ValueError:
+            print("Invalid input. Safety mode not changed.")
+    
+    elif choice == "5":
         # Reset to defaults
         files_to_remove = [
-            os.path.expanduser("~/.config/openai_base_url"),
-            os.path.expanduser("~/.config/openai_model")
+            os.path.expanduser(CACHE_FOLDER + "/openai_base_url"),
+            os.path.expanduser(CACHE_FOLDER + "/openai_model"),
+            os.path.expanduser(CACHE_FOLDER + "/openai_safety_mode")
         ]
         for file_path in files_to_remove:
             if os.path.exists(file_path):
                 os.remove(file_path)
-        print("Reset to OpenAI defaults (gpt-4o-mini). API key kept unchanged.")
+        print("Reset to OpenAI defaults (gpt-4o-mini, always ask for confirmation). API key kept unchanged.")
     
-    elif choice == "5":
+    elif choice == "6":
         print("Continuing with current settings...")
     
     else:
@@ -744,14 +906,37 @@ if __name__ == "__main__":
     # print the command colorized
     print("AI wants to execute \n\033[1;32m%s\033[0m\n" % cmd)
 
+    # Analyze command safety
+    is_safe, safety_reason = analyze_command_safety(cmd)
+    safety_mode = get_safety_mode()
+    
+    # Show safety assessment
+    if is_safe:
+        print(f"Safety assessment: \033[1;32mSafe\033[0m - {safety_reason}")
+    else:
+        print(f"Safety assessment: \033[1;31mPotentially dangerous\033[0m - {safety_reason}")
+    
+    # Determine if we need user confirmation
+    need_confirmation = True
+    if safety_mode == 1 and is_safe:
+        need_confirmation = False
+        print("Auto-executing safe command (safety mode: auto-run safe commands)")
+    
     # validate the command
-    if input("Do you want to execute this command? [Y/n] ").lower() == "n":
+    if need_confirmation and input("Do you want to execute this command? [Y/n] ").lower() == "n":
         # execute the command with Popen and save it to the history
         cmds = get_cmd_list(client, prompt, context_files=context_files, n=args.n)
         print("Here are some other commands you might want to execute:")
         index = 0
         for cmd in cmds:
             print("%d. \033[1;32m%s\033[0m" % (index, cmd))
+            # Analyze alternative command safety
+            alt_is_safe, alt_safety_reason = analyze_command_safety(cmd)
+            if alt_is_safe:
+                print(f"   Safety: \033[1;32mSafe\033[0m - {alt_safety_reason}")
+            else:
+                print(f"   Safety: \033[1;31mPotentially dangerous\033[0m - {alt_safety_reason}")
+                
             if args.e:
                 print_explaination(client, cmd)
                 print("\n")

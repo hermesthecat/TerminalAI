@@ -161,8 +161,8 @@ if (Test-Path $exePath) {
     }
     
     # Create distribution package
-    Write-Host "Creating distribution package..." -ForegroundColor Yellow
-    $distPackage = "$SCRIPT_DIR\terminalai-windows-portable.zip"
+    #Write-Host "Creating distribution package..." -ForegroundColor Yellow
+    #$distPackage = "$SCRIPT_DIR\terminalai-windows-portable.zip"
     
     # Create temp directory for package
     $tempDir = "$env:TEMP\terminalai-package"
