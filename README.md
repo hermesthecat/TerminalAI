@@ -5,6 +5,9 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
 - Added Windows support with PowerShell and CMD compatibility
+- **New:** Command safety analysis and auto-execution of safe commands
+- **New:** Support for custom API providers (OpenAI, Azure, LocalAI, Ollama, etc.)
+- **New:** Configurable model selection
 
 ### Known Issues
 - History file updates automatically, but the history of the session does not.
@@ -15,13 +18,13 @@ e.g., in zsh, you need to run `fc -R` to update the history file.
 
 ### Linux/macOS
     git clone https://github.com/hermesthecat/terminalai
-    cd bash-ai
+    cd terminalai
     chmod +x install.sh
     ./install.sh
 
 ### Windows
     git clone https://github.com/hermesthecat/terminalai
-    cd bash-ai
+    cd terminalai
     powershell -ExecutionPolicy Bypass -File install.ps1
 
 Or using PowerShell directly:
@@ -47,6 +50,48 @@ You can get the key from [here](https://platform.openai.com/api-keys)
 `ai <what you want to do>`
 
 ![Demo gif](https://i.postimg.cc/VNqZh0tV/demo.gif)
+
+### Configuration
+You can configure API settings, model selection, and safety options:
+
+```bash
+ai --config
+```
+
+This opens an interactive menu with the following options:
+1. Update API key
+2. Update API base URL (for OpenAI-compatible APIs)
+3. Update model name
+4. Update safety mode
+5. Reset to OpenAI defaults
+6. Continue with current settings
+
+### Command Safety Analysis
+TerminalAI now analyzes commands for safety before execution:
+
+- **Safety Mode 0 (Default):** Always asks for confirmation before executing commands
+- **Safety Mode 1:** Automatically executes safe commands, asks for confirmation on potentially dangerous ones
+
+Each command is analyzed and marked as either:
+- **Safe:** Basic system information, navigation, or read-only commands
+- **Potentially Dangerous:** System modifications, privilege escalation, network changes, etc.
+
+### Custom API Providers
+You can use TerminalAI with various OpenAI-compatible APIs:
+
+- **OpenAI** (default)
+- **Azure OpenAI**
+- **LocalAI** (http://localhost:8080/v1)
+- **Ollama** (http://localhost:11434/v1)
+- **LM Studio** (http://localhost:1234/v1)
+- Any other OpenAI-compatible API
+
+### Model Selection
+Choose from various models depending on your API provider:
+
+- **OpenAI:** gpt-4o-mini (default), gpt-4o, gpt-4-turbo, gpt-3.5-turbo
+- **LocalAI/Ollama:** llama3.2:3b, llama3.1:8b, codellama:7b, mistral:7b
+- **Azure OpenAI:** Your deployment name
 
 ### Context
 `ai` is aware of the distro used. It will use the correct package manager to install dependencies.
