@@ -5,18 +5,111 @@
 \brm\s+(-[rf]+\s+)?(\/|~|\$HOME|\${HOME}|\$USER|\${USER})  # rm with root/home paths
 \bmv\s+.+\s+(\/|~|\$HOME|\${HOME}|\$USER|\${USER})  # mv to sensitive locations
 \bdd\s+  # dd commands
+\bformat\s+  # format commands
+\bmkfs\s+  # filesystem creation
+del\s+.*\/[QqSs]  # Windows delete with /Q or /S flags
+Remove-Item\s+.*\s+-Recurse  # PowerShell recursive delete
+Remove-Item\s+.*\s+-Force  # PowerShell forced delete
 
 # Privilege escalation
 \bsudo\s+  # sudo commands
 \bsu\s+  # su commands
 \brunas\s+  # Windows runas
+Start-Process\s+.*\s+-Verb\s+RunAs  # PowerShell run as admin
+psexec\s+  # PsExec tool
 
-# Custom dangerous patterns can be added here
-\bformat\s+  # format commands
-\bshutdown\b  # shutdown command
-\breboot\b  # reboot command
+# Remote execution
+\bssh\s+.+\s+-exec  # ssh with exec
+\btelnet\s+  # telnet
+Invoke-Command\s+.*\s+-ComputerName  # PowerShell remote command
+Enter-PSSession\s+  # PowerShell remote session
 
-# Network operations
+# Network/firewall
+\biptables\s+-(A|D|P|F|X|Z|I|R)\s+  # iptables modifications
+\bnetsh\s+firewall\s+  # Windows firewall changes
+\bnetsh\s+advfirewall\s+  # Windows advanced firewall
+\broute\s+add\s+  # route modifications
+New-NetFirewallRule\s+  # PowerShell firewall rule creation
+Set-NetFirewallRule\s+  # PowerShell firewall rule modification
 Disable-NetAdapter\b  # Disable network adapters
 Enable-NetAdapter\b  # Enable network adapters
-netsh\s+interface\s+set  # Network interface modifications 
+netsh\s+interface\s+set  # Network interface modifications
+
+# File permissions
+\bchmod\s+777\s+  # chmod with 777
+\bchmod\s+[+]x\s+  # chmod adding execute
+\bicacls\s+.*\s+\/grant\s+  # Windows permission changes
+Set-Acl\s+  # PowerShell ACL modification
+Set-ItemProperty\s+  # PowerShell item property modification
+
+# Process management
+\bkill\s+-9\s+  # kill -9
+\bpkill\s+-9\s+  # pkill -9
+\btaskkill\s+\/F\s+  # forceful taskkill
+Stop-Process\s+.*\s+-Force  # PowerShell forceful process termination
+
+# System configuration
+\bsystemctl\s+(stop|disable|mask)\s+  # systemctl stopping services
+\bservice\s+.+\s+stop\s+  # stopping services
+\bsc\s+stop\s+  # Windows service stopping
+Stop-Service\s+  # PowerShell service stopping
+Set-Service\s+  # PowerShell service modification
+Disable-ComputerRestore\s+  # Disable system restore
+
+# Registry modification (Windows)
+reg\s+(add|delete)\s+  # Registry modification
+Set-ItemProperty\s+.*\s+HKLM:  # PowerShell registry modification
+New-ItemProperty\s+.*\s+HKLM:  # PowerShell registry creation
+Remove-ItemProperty\s+.*\s+HKLM:  # PowerShell registry deletion
+
+# Downloading/executing
+curl\s+.+\s+\|\s+sh  # piping curl to shell
+wget\s+.+\s+\|\s+sh  # piping wget to shell
+curl\s+.+\s+\|\s+bash  # piping curl to bash
+wget\s+.+\s+\|\s+bash  # piping wget to bash
+powershell\s+-e\s+  # encoded PowerShell
+powershell\s+.*\s+iex\s+  # PowerShell invoke-expression
+powershell\s+.*\s+downloadstring\s+  # PowerShell download and execute
+Invoke-Expression\s+  # PowerShell execute string
+Invoke-WebRequest\s+.*\s+\|\s+Invoke-Expression  # PowerShell download and execute
+Start-BitsTransfer\s+  # PowerShell BITS transfer
+
+# Data exposure
+\bcat\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)  # reading sensitive files
+\btype\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)  # Windows reading sensitive files
+\bgrep\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)  # grepping sensitive files
+Get-Content\s+.*\s+(password|credential|secret)  # PowerShell reading sensitive files
+
+# System shutdown/restart
+\bshutdown\b  # shutdown command
+\breboot\b  # reboot command
+\bhalt\b  # halt command
+\bpoweroff\b  # poweroff command
+\binit\s+0\b  # init 0 command
+\binit\s+6\b  # init 6 command
+Stop-Computer\b  # PowerShell shutdown
+Restart-Computer\b  # PowerShell restart
+
+# Disk operations
+format\s+[a-zA-Z]:  # Format drive
+diskpart\b  # Disk partitioning
+fdisk\b  # Disk partitioning
+Clear-Disk\b  # PowerShell disk clearing
+
+# User management
+net\s+user\s+.*\s+\/add  # Windows user addition
+net\s+localgroup\s+administrators\s+.*\s+\/add  # Add to admin group
+New-LocalUser\b  # PowerShell user creation
+Add-LocalGroupMember\b  # PowerShell group modification
+Enable-LocalUser\b  # PowerShell user enabling
+Disable-LocalUser\b  # PowerShell user disabling
+
+# Scheduled tasks
+schtasks\s+\/create  # Create scheduled task
+New-ScheduledTask\b  # PowerShell scheduled task
+Register-ScheduledTask\b  # PowerShell register task
+
+# System state
+wbadmin\s+start\s+  # Windows Backup Admin
+vssadmin\s+delete\s+  # Volume Shadow Copy deletion
+bcdedit\s+\/set\s+  # Boot configuration changes 

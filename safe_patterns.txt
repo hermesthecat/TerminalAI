@@ -4,16 +4,77 @@
 # File listing and navigation
 \bls\s+  # listing files
 \bdir\s+  # Windows listing files
+Get-ChildItem\s+  # PowerShell listing files (without dangerous parameters)
 \becho\s+  # echo commands
 \bpwd\s+  # print working directory
 \bcd\s+  # change directory
+Set-Location\s+  # PowerShell change directory
+Get-Location\b  # PowerShell get location
 
 # System information
 \bwhoami\s*$  # whoami
 \bdate\s*$  # date
 \btime\s*$  # time
+Get-Date\b  # PowerShell date
+\bclear\s*$  # clear screen
+\bcls\s*$  # Windows clear screen
+Clear-Host\b  # PowerShell clear screen
+\bhistory\s*$  # command history
+Get-History\b  # PowerShell history
+
+# Help and documentation
+\bhelp\s+  # help commands
+\bman\s+  # manual pages
+Get-Help\b  # PowerShell help
+Get-Command\b  # PowerShell command listing
+
+# File operations (read-only)
+\bfind\s+  # find commands (generally safe)
+\bfindstr\s+  # Windows find in strings
+\bgrep\s+  # grep (unless on sensitive files)
+Select-String\b  # PowerShell grep
+\bcat\s+  # cat files (unless sensitive)
+\btype\s+  # Windows type files
+Get-Content\b  # PowerShell read files (unless sensitive)
+
+# Network diagnostics
+\bping\s+  # ping commands
+Test-Connection\b  # PowerShell ping
+Test-NetConnection\b  # PowerShell network test
+\bnetstat\s+  # network statistics
+Get-NetTCPConnection\b  # PowerShell netstat
+\bipconfig\s*$  # Windows IP configuration
+\bifconfig\s*$  # IP configuration
+Get-NetIPAddress\b  # PowerShell IP config
+Get-NetAdapter\b  # PowerShell network adapters
+\bnslookup\s+  # DNS lookup
+Resolve-DnsName\b  # PowerShell DNS lookup
+\btracert\s+  # trace route
+Test-NetConnection\s+.*\s+-TraceRoute  # PowerShell trace route
+
+# Process information
+\bps\s+  # process status
+\btasklist\s*$  # Windows process list
+Get-Process\b  # PowerShell process list
+\btop\s*$  # top processes
+Get-Counter\b  # PowerShell performance counters
+
+# Disk information
+\bdf\s*$  # disk free space
+\bdu\s+  # disk usage
+Get-PSDrive\b  # PowerShell drives
+Get-Volume\b  # PowerShell volumes
+\bfree\s*$  # memory usage
+Get-ComputerInfo\b  # PowerShell computer info
+
+# System information
+\buname\s+  # system information
+\bsysteminfo\s*$  # Windows system information
+Get-ComputerInfo\b  # PowerShell system information
+\bver\s*$  # Windows version
+$PSVersionTable\b  # PowerShell version
+Get-Host\b  # PowerShell host information
 
 # Custom safe patterns can be added here
-\bping\s+  # ping commands
 \bnslookup\s+  # DNS lookup
 \btracert\s+  # trace route 
