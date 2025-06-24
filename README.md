@@ -1,13 +1,14 @@
 # TerminalAI
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
-## New Version
+## New Version (0.3.1)
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
 - Added Windows support with PowerShell and CMD compatibility
 - **New:** Command safety analysis and auto-execution of safe commands
 - **New:** Support for custom API providers (OpenAI, Azure, LocalAI, Ollama, etc.)
 - **New:** Configurable model selection
+- **New:** Customizable safety patterns via external files
 
 ### Known Issues
 - History file updates automatically, but the history of the session does not.
@@ -76,6 +77,27 @@ Each command is analyzed and marked as either:
 - **Safe:** Basic system information, navigation, or read-only commands
 - **Potentially Dangerous:** System modifications, privilege escalation, network changes, etc.
 
+#### Customizable Safety Patterns
+You can now customize the safety patterns used to analyze commands by editing two files:
+
+- **dangerous_patterns.txt**: Contains regex patterns for potentially dangerous commands
+- **safe_patterns.txt**: Contains regex patterns for commands that are considered safe
+
+These files are created automatically with default patterns when the program runs for the first time. You can add, remove, or modify patterns to suit your specific needs.
+
+Example of adding custom patterns:
+```
+# In dangerous_patterns.txt
+# Add custom dangerous pattern
+custom-dangerous-command\s+  # My custom dangerous command
+
+# In safe_patterns.txt
+# Add custom safe pattern
+custom-safe-command\s+  # My custom safe command
+```
+
+Lines starting with `#` are treated as comments and ignored.
+
 ### Custom API Providers
 You can use TerminalAI with various OpenAI-compatible APIs:
 
@@ -140,4 +162,12 @@ The executable build creates:
 - Faster startup (no virtual environment activation)
 - Portable across Windows systems
 - Ideal for corporate environments with restricted software installation
+
+### Configuration Paths
+TerminalAI now stores configuration in these locations:
+
+- **Linux:** /opt/TerminalAI
+- **macOS:** /opt/TerminalAI
+- **Windows:** C:/TerminalAI
+- **Other platforms:** /opt/TerminalAI
 

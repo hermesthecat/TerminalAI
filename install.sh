@@ -293,6 +293,8 @@ EOF
         # Copy executable to installation directory
         echo -e "\e[33mCopying executable to $INSTALL_DIR...\e[0m"
         sudo cp "$EXE_PATH" "$INSTALL_DIR/ai"
+        sudo cp "$SCRIPT_DIR/dangerous_patterns.txt" "$INSTALL_DIR/dangerous_patterns.txt"
+        sudo cp "$SCRIPT_DIR/safe_patterns.txt" "$INSTALL_DIR/safe_patterns.txt"
         if [ $? -ne 0 ]; then
             echo -e "\e[31mFailed to copy executable. Try running with sudo.\e[0m"
             exit 1

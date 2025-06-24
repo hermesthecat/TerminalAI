@@ -249,6 +249,8 @@ exe = EXE(
         # Copy executable to C:\TerminalAI
         Write-Host "Copying executable to $INSTALL_DIR..." -ForegroundColor Yellow
         Copy-Item $exePath "$INSTALL_DIR\ai.exe" -Force
+        Copy-Item "$SCRIPT_DIR\dangerous_patterns.txt" "$INSTALL_DIR\dangerous_patterns.txt" -Force
+        Copy-Item "$SCRIPT_DIR\safe_patterns.txt" "$INSTALL_DIR\safe_patterns.txt" -Force
         
         # Create batch wrapper in C:\TerminalAI
         $installBatchContent = @"
