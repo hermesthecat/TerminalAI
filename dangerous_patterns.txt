@@ -1,0 +1,22 @@
+# List of dangerous command patterns - one regex per line
+# Lines starting with # are comments
+
+# System modification
+\brm\s+(-[rf]+\s+)?(\/|~|\$HOME|\${HOME}|\$USER|\${USER})  # rm with root/home paths
+\bmv\s+.+\s+(\/|~|\$HOME|\${HOME}|\$USER|\${USER})  # mv to sensitive locations
+\bdd\s+  # dd commands
+
+# Privilege escalation
+\bsudo\s+  # sudo commands
+\bsu\s+  # su commands
+\brunas\s+  # Windows runas
+
+# Custom dangerous patterns can be added here
+\bformat\s+  # format commands
+\bshutdown\b  # shutdown command
+\breboot\b  # reboot command
+
+# Network operations
+Disable-NetAdapter\b  # Disable network adapters
+Enable-NetAdapter\b  # Enable network adapters
+netsh\s+interface\s+set  # Network interface modifications 

@@ -1,0 +1,19 @@
+# List of safe command patterns - one regex per line
+# Lines starting with # are comments
+
+# File listing and navigation
+\bls\s+  # listing files
+\bdir\s+  # Windows listing files
+\becho\s+  # echo commands
+\bpwd\s+  # print working directory
+\bcd\s+  # change directory
+
+# System information
+\bwhoami\s*$  # whoami
+\bdate\s*$  # date
+\btime\s*$  # time
+
+# Custom safe patterns can be added here
+\bping\s+  # ping commands
+\bnslookup\s+  # DNS lookup
+\btracert\s+  # trace route 
