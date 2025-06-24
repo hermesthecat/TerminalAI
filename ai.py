@@ -573,16 +573,18 @@ def chat(client, prompt):
         if PLATFORM == "Windows":
             import platform
             distribution = f"Windows {platform.release()}"
+            system_message = f"You are a helpful assistant. Answer as concisely as possible. This machine is running Windows {platform.release()}. When suggesting commands, use Windows PowerShell or CMD commands, NOT Linux/Unix commands."
         else:
             if distro:
                 distribution = distro.name()
+                system_message = f"You are a helpful assistant. Answer as concisely as possible. This machine is running {PLATFORM} {distribution}."
             else:
                 distribution = "Linux"
+                system_message = f"You are a helpful assistant. Answer as concisely as possible. This machine is running {PLATFORM}."
         history.append(
             {
                 "role": "system",
-                "content": "You are a helpful assistant. Answer as concisely as possible. This machine is running %s %s."
-                % (PLATFORM, distribution),
+                "content": system_message
             }
         )
 
@@ -609,20 +611,23 @@ def get_cmd(client, prompt, context_prompt=""):
     if PLATFORM == "Windows":
         import platform
         distribution = f"Windows {platform.release()}"
+        system_info = f"Windows {platform.release()}. Use Windows PowerShell or CMD commands, not Linux/Unix commands."
     else:
         if distro:
             distribution = distro.like()
             if distribution is None or distribution == "":
                 distribution = distro.name()
+            system_info = f"{PLATFORM} like {distribution}"
         else:
             distribution = "Linux"
+            system_info = f"{PLATFORM}"
     log.debug("Distribution: %s" % distribution)
 
     model_name = get_model_name()
     response = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system", "content": "You can output only terminal commands! No info! No comments. No backticks. This system is running on %s like %s." % (PLATFORM, distribution)},
+            {"role": "system", "content": f"You can output only terminal commands! No info! No comments. No backticks. This system is running on {system_info}. If on Windows, use PowerShell or CMD commands, NOT Linux/Unix commands."},
             {"role": "user", "content": "Generate a single bash command to %s\n%s" % (prompt, context_prompt)},
         ],
         max_tokens=100,
@@ -653,13 +658,16 @@ def get_cmd_list(client, prompt, context_files=[], n=5):
     if PLATFORM == "Windows":
         import platform
         distribution = f"Windows {platform.release()}"
+        system_info = f"Windows {platform.release()}. Use Windows PowerShell or CMD commands, not Linux/Unix commands."
     else:
         if distro:
             distribution = distro.like()
             if distribution is None or distribution == "":
                 distribution = distro.name()
+            system_info = f"{PLATFORM} like {distribution}"
         else:
             distribution = "Linux"
+            system_info = f"{PLATFORM}"
     log.debug("Distribution: %s" % distribution)
     context_prompt = get_context_files()
 
@@ -667,7 +675,7 @@ def get_cmd_list(client, prompt, context_files=[], n=5):
     response = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system", "content": "You can output only terminal commands! No info! No comments. No backticks. Running on %s like %s. %s" % (PLATFORM, distribution, context_prompt)},
+            {"role": "system", "content": f"You can output only terminal commands! No info! No comments. No backticks. Running on {system_info}. {context_prompt} If on Windows, use PowerShell or CMD commands, NOT Linux/Unix commands."},
             {"role": "user", "content": "Generate a single bash command to %s" % prompt},
         ],
         max_tokens=50,
@@ -702,7 +710,7 @@ def get_needed_context(cmd, client):
         context_list += "%s ) %s\n" % (i, CONTEXT[i]["name"])
 
     prompt = (
-        "If you need to generate a signle bash command to %s, which of this context you need:\n%s\n Your output is a number.\n If none of the above context is usefull the output is -1.\n"
+        "If you need to generate a single terminal command to %s, which of this context you need:\n%s\n Your output is a number.\n If none of the above context is usefull the output is -1.\n"
         % (cmd, context_list)
     )
 
