@@ -47,8 +47,8 @@ Thumbs.db
 # AI specific
 *.pkl
 .cache/
-.bashai/
+.terminalai/
 
 # Windows build artifacts
 *.exe
-bashai-windows-portable.zip 
+terminalai-windows-portable.zip 

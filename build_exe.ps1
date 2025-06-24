@@ -1,4 +1,4 @@
-# PowerShell script to build Windows executable for Bash AI
+# PowerShell script to build Windows executable for TerminalAI
 
 param(
     [switch]$Help,
@@ -8,7 +8,7 @@ param(
 )
 
 if ($Help) {
-    Write-Host "Bash AI Windows EXE Builder" -ForegroundColor Green
+    Write-Host "TerminalAI Windows EXE Builder" -ForegroundColor Green
     Write-Host "Usage: .\build_exe.ps1 [options]"
     Write-Host ""
     Write-Host "Options:"
@@ -30,10 +30,10 @@ $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $BUILD_DIR = "$SCRIPT_DIR\build"
 $DIST_DIR = "$SCRIPT_DIR\dist"
 
-Write-Host "Building Bash AI Windows Executable..." -ForegroundColor Green
+Write-Host "Building TerminalAI Windows Executable..." -ForegroundColor Green
 
 # Check if virtual environment exists
-$ENV_PATH = "$env:USERPROFILE\.virtualenvs\bashai"
+$ENV_PATH = "$env:USERPROFILE\.virtualenvs\terminalai"
 if (-not (Test-Path $ENV_PATH)) {
     Write-Host "Virtual environment not found. Please run install.ps1 first." -ForegroundColor Red
     exit 1
@@ -162,10 +162,10 @@ if (Test-Path $exePath) {
     
     # Create distribution package
     Write-Host "Creating distribution package..." -ForegroundColor Yellow
-    $distPackage = "$SCRIPT_DIR\bashai-windows-portable.zip"
+    $distPackage = "$SCRIPT_DIR\terminalai-windows-portable.zip"
     
     # Create temp directory for package
-    $tempDir = "$env:TEMP\bashai-package"
+    $tempDir = "$env:TEMP\terminalai-package"
     if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir }
     New-Item -ItemType Directory -Path $tempDir | Out-Null
     
@@ -176,7 +176,7 @@ if (Test-Path $exePath) {
     # Create simple batch wrapper for the executable
     $exeBatchContent = @"
 @echo off
-:: Bash AI Portable Windows Executable
+:: TerminalAI Portable Windows Executable
 :: No Python installation required
 
 "%~dp0ai.exe" %*
@@ -186,9 +186,9 @@ if (Test-Path $exePath) {
     
     # Create usage instructions
     $usageContent = @"
-# Bash AI - Portable Windows Version
+# TerminalAI - Portable Windows Version
 
-This is a standalone executable version of Bash AI that doesn't require Python installation.
+This is a standalone executable version of TerminalAI that doesn't require Python installation.
 
 ## Quick Start
 

@@ -1,4 +1,4 @@
-# Bash AI
+# TerminalAI
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
 ## New Version
@@ -14,13 +14,13 @@ e.g., in zsh, you need to run `fc -R` to update the history file.
 ## Install
 
 ### Linux/macOS
-    git clone https://github.com/JinBlack/bash-ai
+    git clone https://github.com/hermesthecat/terminalai
     cd bash-ai
     chmod +x install.sh
     ./install.sh
 
 ### Windows
-    git clone https://github.com/JinBlack/bash-ai
+    git clone https://github.com/hermesthecat/terminalai
     cd bash-ai
     powershell -ExecutionPolicy Bypass -File install.ps1
 
@@ -87,7 +87,7 @@ The Windows version can be compiled into a standalone executable using PyInstall
 
 The executable build creates:
 - `dist/ai.exe` - Standalone executable (~40-60MB)
-- `bashai-windows-portable.zip` - Distribution package with executable and documentation
+- `terminalai-windows-portable.zip` - Distribution package with executable and documentation
 
 **Benefits of standalone executable:**
 - No Python installation required

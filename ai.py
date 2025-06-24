@@ -27,15 +27,15 @@ logging.basicConfig(
 VERSION = "0.3.0"
 PLATFORM = platform.system()
 if PLATFORM == "Linux":
-    CACHE_FOLDER = "~/.cache/bashai"
+    CACHE_FOLDER = "~/.cache/terminalai"
 elif PLATFORM == "Darwin":
     PLATFORM = "MacOSX"
-    CACHE_FOLDER = "~/Library/Caches/bashai"
+    CACHE_FOLDER = "~/Library/Caches/terminalai"
 elif PLATFORM == "Windows":
-    CACHE_FOLDER = "~/AppData/Local/bashai"
+    CACHE_FOLDER = "~/AppData/Local/terminalai"
 else:
     # Fallback for unknown platforms
-    CACHE_FOLDER = "~/.bashai"
+    CACHE_FOLDER = "~/.terminalai"
 
 
 def cache(maxsize=128):

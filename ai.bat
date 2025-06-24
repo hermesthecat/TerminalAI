@@ -1,5 +1,5 @@
 @echo off
-set ENV_PATH=%USERPROFILE%\.virtualenvs\bashai
+set ENV_PATH=%USERPROFILE%\.virtualenvs\terminalai
 set COMMAND_PATH=Y:\New folder (18)\bash-ai-main\ai.py
 
 if not exist "%ENV_PATH%" (

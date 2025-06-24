@@ -1,4 +1,4 @@
-# PowerShell installation script for Bash AI on Windows
+# PowerShell installation script for TerminalAI on Windows
 
 param(
     [switch]$Help,
@@ -6,7 +6,7 @@ param(
 )
 
 if ($Help) {
-    Write-Host "Bash AI Windows Installation Script"
+    Write-Host "TerminalAI Windows Installation Script"
     Write-Host "Usage: .\install.ps1 [options]"
     Write-Host ""
     Write-Host "Options:"
@@ -25,7 +25,7 @@ if ($Help) {
 # Get the directory of the current script
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
-Write-Host "Installing Bash AI for Windows..." -ForegroundColor Green
+Write-Host "Installing TerminalAI for Windows..." -ForegroundColor Green
 
 # Check if Python is installed
 try {
@@ -51,7 +51,7 @@ try {
 }
 
 # Create virtual environment
-$ENV_PATH = "$env:USERPROFILE\.virtualenvs\bashai"
+$ENV_PATH = "$env:USERPROFILE\.virtualenvs\terminalai"
 if (-not (Test-Path $ENV_PATH)) {
     Write-Host "Creating virtual environment..." -ForegroundColor Yellow
     python -m venv $ENV_PATH
@@ -77,7 +77,7 @@ if ($LASTEXITCODE -ne 0) {
 # Create batch file wrapper
 $batchContent = @"
 @echo off
-set ENV_PATH=%USERPROFILE%\.virtualenvs\bashai
+set ENV_PATH=%USERPROFILE%\.virtualenvs\terminalai
 set COMMAND_PATH=$SCRIPT_DIR\ai.py
 
 if not exist "%ENV_PATH%" (
