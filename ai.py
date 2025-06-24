@@ -1,4 +1,3 @@
-#! /bin/env python3
 # -*- coding: utf-8 -*-
 
 import argparse
@@ -89,25 +88,154 @@ def cache(maxsize=128):
 
 def get_api_key():
     # load the api key from .config/openai
-    if os.path.exists(os.path.expanduser("~/.config/openai")):
-        with open(os.path.expanduser("~/.config/openai")) as f:
+    config_file = os.path.expanduser("~/.config/openai")
+    if os.path.exists(config_file):
+        with open(config_file) as f:
             return f.read().strip()
     else:
-        print(
-            "No api key found. Please create a file ~/.config/openai with your api key in it."
-        )
+        print("No api key found. Please create a file ~/.config/openai with your api key in it.")
         # ask for key and store it
-        api_key = input("Please enter your api key: ")
+        api_key = input("Please enter your OpenAI API key: ")
         if api_key == "":
             print("No api key provided. Exiting.")
             sys.exit(1)
         # make sure the directory exists
         if not os.path.exists(os.path.expanduser("~/.config")):
             os.mkdir(os.path.expanduser("~/.config"))
-        with open(os.path.expanduser("~/.config/openai"), "w") as f:
+        with open(config_file, "w") as f:
             f.write(api_key)
 
         return api_key
+
+
+def get_api_base_url():
+    # load the api base url from .config/openai_base_url
+    config_file = os.path.expanduser("~/.config/openai_base_url")
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            base_url = f.read().strip()
+            return base_url if base_url else None
+    return None
+
+
+def get_model_name():
+    # load the model name from .config/openai_model
+    config_file = os.path.expanduser("~/.config/openai_model")
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            model = f.read().strip()
+            return model if model else "gpt-4o-mini"
+    return "gpt-4o-mini"
+
+
+def setup_api_configuration():
+    """Interactive setup for API key and base URL"""
+    print("\n=== OpenAI API Configuration ===")
+    
+    # Current API key
+    current_key = ""
+    config_file = os.path.expanduser("~/.config/openai")
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            current_key = f.read().strip()
+        print(f"Current API key: {current_key[:10]}...{current_key[-4:] if len(current_key) > 14 else current_key}")
+    else:
+        print("No API key configured")
+    
+    # Current base URL
+    base_url_file = os.path.expanduser("~/.config/openai_base_url")
+    current_base_url = ""
+    if os.path.exists(base_url_file):
+        with open(base_url_file) as f:
+            current_base_url = f.read().strip()
+        print(f"Current API base URL: {current_base_url if current_base_url else 'Default (OpenAI)'}")
+    else:
+        print("Current API base URL: Default (OpenAI)")
+    
+    # Current model
+    current_model = get_model_name()
+    print(f"Current model: {current_model}")
+    
+    print("\nOptions:")
+    print("1. Update API key")
+    print("2. Update API base URL (for OpenAI-compatible APIs)")
+    print("3. Update model name")
+    print("4. Reset to OpenAI defaults")
+    print("5. Continue with current settings")
+    
+    choice = input("\nSelect option (1-5): ").strip()
+    
+    if choice == "1":
+        new_key = input("Enter new API key: ").strip()
+        if new_key:
+            os.makedirs(os.path.dirname(config_file), exist_ok=True)
+            with open(config_file, "w") as f:
+                f.write(new_key)
+            print("API key updated!")
+        else:
+            print("API key not changed")
+    
+    elif choice == "2":
+        print("\nPopular OpenAI-compatible APIs:")
+        print("- OpenAI: https://api.openai.com/v1 (default)")
+        print("- Azure OpenAI: https://your-resource.openai.azure.com/")
+        print("- LocalAI: http://localhost:8080/v1")
+        print("- Ollama: http://localhost:11434/v1")
+        print("- LM Studio: http://localhost:1234/v1")
+        
+        new_base_url = input("\nEnter API base URL (leave empty for OpenAI default): ").strip()
+        os.makedirs(os.path.dirname(base_url_file), exist_ok=True)
+        with open(base_url_file, "w") as f:
+            f.write(new_base_url)
+        
+        if new_base_url:
+            print(f"API base URL set to: {new_base_url}")
+        else:
+            print("API base URL reset to OpenAI default")
+    
+    elif choice == "3":
+        print("\nPopular models by provider:")
+        print("OpenAI:")
+        print("  - gpt-4o-mini (default, cost-effective)")
+        print("  - gpt-4o (latest, most capable)")
+        print("  - gpt-4-turbo")
+        print("  - gpt-3.5-turbo")
+        print("\nLocalAI/Ollama:")
+        print("  - llama3.2:3b")
+        print("  - llama3.1:8b")
+        print("  - codellama:7b")
+        print("  - mistral:7b")
+        print("\nAzure OpenAI:")
+        print("  - Use your deployment name")
+        
+        new_model = input(f"\nEnter model name (current: {current_model}): ").strip()
+        if new_model:
+            model_file = os.path.expanduser("~/.config/openai_model")
+            os.makedirs(os.path.dirname(model_file), exist_ok=True)
+            with open(model_file, "w") as f:
+                f.write(new_model)
+            print(f"Model set to: {new_model}")
+        else:
+            print("Model not changed")
+    
+    elif choice == "4":
+        # Reset to defaults
+        files_to_remove = [
+            os.path.expanduser("~/.config/openai_base_url"),
+            os.path.expanduser("~/.config/openai_model")
+        ]
+        for file_path in files_to_remove:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        print("Reset to OpenAI defaults (gpt-4o-mini). API key kept unchanged.")
+    
+    elif choice == "5":
+        print("Continuing with current settings...")
+    
+    else:
+        print("Invalid choice, continuing with current settings...")
+    
+    print("=" * 35)
 
 
 def get_context_files():
@@ -297,10 +425,17 @@ def chat(client, prompt):
         )
 
     history.append({"role": "user", "content": prompt})
-    response = client.chat.completions.create(model="gpt-4o-mini", messages=history)
-    content = response.choices[0].message.content
-    # trim the content
-    content = content.strip()
+    model_name = get_model_name()
+    response = client.chat.completions.create(model=model_name, messages=history)
+    
+    # Check if response is valid
+    if not response.choices or not response.choices[0].message.content:
+        content = "Error: Empty response from API. Please check your model and API configuration."
+    else:
+        content = response.choices[0].message.content
+        # trim the content
+        content = content.strip()
+    
     history.append({"role": "assistant", "content": content})
     save_history(history)
     return content
@@ -321,8 +456,9 @@ def get_cmd(client, prompt, context_prompt=""):
             distribution = "Linux"
     log.debug("Distribution: %s" % distribution)
 
+    model_name = get_model_name()
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model_name,
         messages=[
             {"role": "system", "content": "You can output only terminal commands! No info! No comments. No backticks. This system is running on %s like %s." % (PLATFORM, distribution)},
             {"role": "user", "content": "Generate a single bash command to %s\n%s" % (prompt, context_prompt)},
@@ -331,6 +467,14 @@ def get_cmd(client, prompt, context_prompt=""):
         temperature=0,
         top_p=1,
     )
+    
+    # Check if response is valid
+    if not response.choices or not response.choices[0].message.content:
+        print("Error: Empty response from API. Please check your model and API configuration.")
+        print(f"Model: {model_name}")
+        print(f"API Base URL: {get_api_base_url() or 'Default (OpenAI)'}")
+        return "echo 'Error: No command generated'"
+    
     cmd = response.choices[0].message.content
 
     # sanitize backticks and "```bash"
@@ -357,8 +501,9 @@ def get_cmd_list(client, prompt, context_files=[], n=5):
     log.debug("Distribution: %s" % distribution)
     context_prompt = get_context_files()
 
+    model_name = get_model_name()
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model_name,
         messages=[
             {"role": "system", "content": "You can output only terminal commands! No info! No comments. No backticks. Running on %s like %s. %s" % (PLATFORM, distribution, context_prompt)},
             {"role": "user", "content": "Generate a single bash command to %s" % prompt},
@@ -368,11 +513,23 @@ def get_cmd_list(client, prompt, context_files=[], n=5):
         top_p=1,
         n=n,
     )
-    cmd_list = [
-        x.message.content.replace("```bash\n", "").replace("\n```", "") for x in response.choices
-    ]
-    # trim the cmd
-    cmd_list = list(set([x.strip() for x in cmd_list]))
+    
+    # Check if response is valid
+    if not response.choices:
+        print("Error: Empty response from API for command list generation.")
+        return ["echo 'Error: No commands generated'"]
+    
+    cmd_list = []
+    for choice in response.choices:
+        if choice.message.content:
+            content = choice.message.content.replace("```bash\n", "").replace("\n```", "")
+            cmd_list.append(content.strip())
+    
+    if not cmd_list:
+        return ["echo 'Error: No valid commands generated'"]
+    
+    # trim the cmd and remove duplicates
+    cmd_list = list(set([x for x in cmd_list if x]))
     return cmd_list
 
 
@@ -387,8 +544,9 @@ def get_needed_context(cmd, client):
         % (cmd, context_list)
     )
 
+    model_name = get_model_name()
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model_name,
         messages=[
             {"role": "system", "content": "You can output only a number."},
             {"role": "user", "content": prompt},
@@ -410,8 +568,9 @@ def get_needed_context(cmd, client):
 
 @cache()
 def get_explaination(client, cmd):
+    model_name = get_model_name()
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model_name,
         messages=[
             {"role": "system", "content": "Explain what is the purpose of command with details for each option."},
             {"role": "user", "content": cmd},
@@ -420,6 +579,11 @@ def get_explaination(client, cmd):
         temperature=0,
         top_p=1,
     )
+    
+    # Check if response is valid
+    if not response.choices or not response.choices[0].message.content:
+        return "Error: Could not generate explanation. Please check your model and API configuration."
+    
     explanation = response.choices[0].message.content
     explanation = explanation.replace("\n\n", "\n")
     return explanation
@@ -480,10 +644,6 @@ def signal_handler(sig, frame):
 
 if __name__ == "__main__":
     # get the command from the user
-    if len(sys.argv) < 2:
-        print("Please provide a command to execute.")
-        sys.exit(1)
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-c", action="store_true", help="auto select context to be included."
@@ -508,12 +668,27 @@ if __name__ == "__main__":
     )
     parser.add_argument("--chat", action="store_true", help="Chat mode.")
     parser.add_argument("--new", action="store_true", help="Clean the chat history.")
-    parser.add_argument("text", nargs="+", help="your query to the ai")
+    parser.add_argument("--config", action="store_true", help="Configure API key and base URL.")
+    parser.add_argument("text", nargs="*", help="your query to the ai")
 
     args = parser.parse_args()
 
+    # Handle configuration mode
+    if args.config:
+        setup_api_configuration()
+        sys.exit(0)
+
+    # Check if we have a query (only when not in chat mode)
+    if not args.chat and not args.text:
+        print("Please provide a command to execute or use --config to configure API settings.")
+        print("Examples:")
+        print("  ai list all files")
+        print("  ai --chat")
+        print("  ai --config")
+        sys.exit(1)
+
     # get the prompt
-    prompt = " ".join(args.text)
+    prompt = " ".join(args.text) if args.text else ""
 
     # setup control-c handler
     signal.signal(signal.SIGINT, signal_handler)
@@ -525,7 +700,17 @@ if __name__ == "__main__":
         print("Error: openai package is not installed. Please run: pip install openai")
         sys.exit(1)
 
-    client = openai.OpenAI(api_key=api_key)
+    # Get API configuration
+    base_url = get_api_base_url()
+    model_name = get_model_name()
+    
+    if base_url:
+        print(f"Using custom API base URL: {base_url}")
+        client = openai.OpenAI(api_key=api_key, base_url=base_url)
+    else:
+        client = openai.OpenAI(api_key=api_key)
+    
+    print(f"Using model: {model_name}")
 
     context = args.c or args.C >= 0
     context_files = []
