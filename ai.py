@@ -158,36 +158,56 @@ def analyze_command_safety(cmd):
         r"\bformat\s+",  # format commands
         r"\bmkfs\s+",  # filesystem creation
         r"del\s+.*\/[QqSs]",  # Windows delete with /Q or /S flags
+        r"Remove-Item\s+.*\s+-Recurse",  # PowerShell recursive delete
+        r"Remove-Item\s+.*\s+-Force",  # PowerShell forced delete
         
         # Privilege escalation
         r"\bsudo\s+",  # sudo commands
         r"\bsu\s+",  # su commands
         r"\brunas\s+",  # Windows runas
+        r"Start-Process\s+.*\s+-Verb\s+RunAs",  # PowerShell run as admin
+        r"psexec\s+",  # PsExec tool
         
         # Remote execution
         r"\bssh\s+.+\s+-exec",  # ssh with exec
         r"\btelnet\s+",  # telnet
+        r"Invoke-Command\s+.*\s+-ComputerName",  # PowerShell remote command
+        r"Enter-PSSession\s+",  # PowerShell remote session
         
         # Network/firewall
         r"\biptables\s+-(A|D|P|F|X|Z|I|R)\s+",  # iptables modifications
         r"\bnetsh\s+firewall\s+",  # Windows firewall changes
         r"\bnetsh\s+advfirewall\s+",  # Windows advanced firewall
         r"\broute\s+add\s+",  # route modifications
+        r"New-NetFirewallRule\s+",  # PowerShell firewall rule creation
+        r"Set-NetFirewallRule\s+",  # PowerShell firewall rule modification
         
         # File permissions
         r"\bchmod\s+777\s+",  # chmod with 777
         r"\bchmod\s+[+]x\s+",  # chmod adding execute
         r"\bicacls\s+.*\s+\/grant\s+",  # Windows permission changes
+        r"Set-Acl\s+",  # PowerShell ACL modification
+        r"Set-ItemProperty\s+",  # PowerShell item property modification
         
         # Process management
         r"\bkill\s+-9\s+",  # kill -9
         r"\bpkill\s+-9\s+",  # pkill -9
         r"\btaskkill\s+\/F\s+",  # forceful taskkill
+        r"Stop-Process\s+.*\s+-Force",  # PowerShell forceful process termination
         
         # System configuration
         r"\bsystemctl\s+(stop|disable|mask)\s+",  # systemctl stopping services
         r"\bservice\s+.+\s+stop\s+",  # stopping services
         r"\bsc\s+stop\s+",  # Windows service stopping
+        r"Stop-Service\s+",  # PowerShell service stopping
+        r"Set-Service\s+",  # PowerShell service modification
+        r"Disable-ComputerRestore\s+",  # Disable system restore
+        
+        # Registry modification (Windows)
+        r"reg\s+(add|delete)\s+",  # Registry modification
+        r"Set-ItemProperty\s+.*\s+HKLM:",  # PowerShell registry modification
+        r"New-ItemProperty\s+.*\s+HKLM:",  # PowerShell registry creation
+        r"Remove-ItemProperty\s+.*\s+HKLM:",  # PowerShell registry deletion
         
         # Downloading/executing
         r"curl\s+.+\s+\|\s+sh",  # piping curl to shell
@@ -197,44 +217,126 @@ def analyze_command_safety(cmd):
         r"powershell\s+-e\s+",  # encoded PowerShell
         r"powershell\s+.*\s+iex\s+",  # PowerShell invoke-expression
         r"powershell\s+.*\s+downloadstring\s+",  # PowerShell download and execute
+        r"Invoke-Expression\s+",  # PowerShell execute string
+        r"Invoke-WebRequest\s+.*\s+\|\s+Invoke-Expression",  # PowerShell download and execute
+        r"Start-BitsTransfer\s+",  # PowerShell BITS transfer
         
         # Data exposure
         r"\bcat\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)",  # reading sensitive files
         r"\btype\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)",  # Windows reading sensitive files
         r"\bgrep\s+.*\/(passwd|shadow|\.ssh\/|\.aws\/)",  # grepping sensitive files
+        r"Get-Content\s+.*\s+(password|credential|secret)",  # PowerShell reading sensitive files
+        
+        # System shutdown/restart
+        r"\bshutdown\b",  # shutdown command
+        r"\breboot\b",  # reboot command
+        r"\bhalt\b",  # halt command
+        r"\bpoweroff\b",  # poweroff command
+        r"\binit\s+0\b",  # init 0 command
+        r"\binit\s+6\b",  # init 6 command
+        r"Stop-Computer\b",  # PowerShell shutdown
+        r"Restart-Computer\b",  # PowerShell restart
+        
+        # Disk operations
+        r"format\s+[a-zA-Z]:",  # Format drive
+        r"diskpart\b",  # Disk partitioning
+        r"fdisk\b",  # Disk partitioning
+        r"Clear-Disk\b",  # PowerShell disk clearing
+        
+        # User management
+        r"net\s+user\s+.*\s+\/add",  # Windows user addition
+        r"net\s+localgroup\s+administrators\s+.*\s+\/add",  # Add to admin group
+        r"New-LocalUser\b",  # PowerShell user creation
+        r"Add-LocalGroupMember\b",  # PowerShell group modification
+        r"Enable-LocalUser\b",  # PowerShell user enabling
+        r"Disable-LocalUser\b",  # PowerShell user disabling
+        
+        # Scheduled tasks
+        r"schtasks\s+\/create",  # Create scheduled task
+        r"New-ScheduledTask\b",  # PowerShell scheduled task
+        r"Register-ScheduledTask\b",  # PowerShell register task
+        
+        # System state
+        r"wbadmin\s+start\s+",  # Windows Backup Admin
+        r"vssadmin\s+delete\s+",  # Volume Shadow Copy deletion
+        r"bcdedit\s+\/set\s+",  # Boot configuration changes
     ]
     
     # List of safe commands/patterns (even if they match dangerous patterns)
     safe_patterns = [
+        # File listing and navigation
         r"\bls\s+",  # listing files
         r"\bdir\s+",  # Windows listing files
+        r"Get-ChildItem\s+",  # PowerShell listing files (without dangerous parameters)
         r"\becho\s+",  # echo commands
         r"\bpwd\s+",  # print working directory
         r"\bcd\s+",  # change directory
+        r"Set-Location\s+",  # PowerShell change directory
+        r"Get-Location\b",  # PowerShell get location
+        
+        # System information
         r"\bwhoami\s*$",  # whoami
         r"\bdate\s*$",  # date
         r"\btime\s*$",  # time
+        r"Get-Date\b",  # PowerShell date
         r"\bclear\s*$",  # clear screen
         r"\bcls\s*$",  # Windows clear screen
+        r"Clear-Host\b",  # PowerShell clear screen
         r"\bhistory\s*$",  # command history
+        r"Get-History\b",  # PowerShell history
+        
+        # Help and documentation
         r"\bhelp\s+",  # help commands
         r"\bman\s+",  # manual pages
+        r"Get-Help\b",  # PowerShell help
+        r"Get-Command\b",  # PowerShell command listing
+        
+        # File operations (read-only)
         r"\bfind\s+",  # find commands (generally safe)
         r"\bfindstr\s+",  # Windows find in strings
         r"\bgrep\s+",  # grep (unless on sensitive files)
+        r"Select-String\b",  # PowerShell grep
+        r"\bcat\s+",  # cat files (unless sensitive)
+        r"\btype\s+",  # Windows type files
+        r"Get-Content\b",  # PowerShell read files (unless sensitive)
+        
+        # Network diagnostics
         r"\bping\s+",  # ping commands
+        r"Test-Connection\b",  # PowerShell ping
+        r"Test-NetConnection\b",  # PowerShell network test
         r"\bnetstat\s+",  # network statistics
+        r"Get-NetTCPConnection\b",  # PowerShell netstat
         r"\bipconfig\s*$",  # Windows IP configuration
         r"\bifconfig\s*$",  # IP configuration
+        r"Get-NetIPAddress\b",  # PowerShell IP config
+        r"Get-NetAdapter\b",  # PowerShell network adapters
+        r"\bnslookup\s+",  # DNS lookup
+        r"Resolve-DnsName\b",  # PowerShell DNS lookup
+        r"\btracert\s+",  # trace route
+        r"Test-NetConnection\s+.*\s+-TraceRoute",  # PowerShell trace route
+        
+        # Process information
         r"\bps\s+",  # process status
         r"\btasklist\s*$",  # Windows process list
+        r"Get-Process\b",  # PowerShell process list
         r"\btop\s*$",  # top processes
+        r"Get-Counter\b",  # PowerShell performance counters
+        
+        # Disk information
         r"\bdf\s*$",  # disk free space
         r"\bdu\s+",  # disk usage
+        r"Get-PSDrive\b",  # PowerShell drives
+        r"Get-Volume\b",  # PowerShell volumes
         r"\bfree\s*$",  # memory usage
+        r"Get-ComputerInfo\b",  # PowerShell computer info
+        
+        # System information
         r"\buname\s+",  # system information
         r"\bsysteminfo\s*$",  # Windows system information
+        r"Get-ComputerInfo\b",  # PowerShell system information
         r"\bver\s*$",  # Windows version
+        r"$PSVersionTable\b",  # PowerShell version
+        r"Get-Host\b",  # PowerShell host information
     ]
 
     # First check if it's a known safe command
@@ -248,15 +350,15 @@ def analyze_command_safety(cmd):
             return False, f"Command contains potentially dangerous pattern: {pattern}"
     
     # Check for pipe to shell
-    if "|" in cmd and any(shell in cmd for shell in ["sh", "bash", "powershell", "cmd"]):
+    if "|" in cmd and any(shell in cmd.lower() for shell in ["sh", "bash", "powershell", "cmd", "invoke-expression", "iex"]):
         return False, "Command pipes output to a shell, which could be dangerous"
     
     # Check for redirection to system files
-    if ">" in cmd and any(path in cmd for path in ["/etc", "/bin", "/sbin", "/usr", "C:\\Windows", "%WINDIR%"]):
+    if ">" in cmd and any(path in cmd.lower() for path in ["/etc", "/bin", "/sbin", "/usr", "c:\\windows", "%windir%", "system32"]):
         return False, "Command redirects output to system directories"
     
     # Check for commands that might download or execute code
-    if any(cmd.startswith(download) for download in ["wget", "curl", "Invoke-WebRequest"]):
+    if any(cmd.lower().startswith(download) for download in ["wget", "curl", "invoke-webrequest", "start-bitstransfer"]):
         return False, "Command downloads content from the internet"
     
     # If no dangerous patterns found, consider it moderately safe
