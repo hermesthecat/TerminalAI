@@ -13,8 +13,15 @@ import sys
 import time
 from collections import OrderedDict
 
-import distro
-import openai
+try:
+    import distro
+except ImportError:
+    distro = None
+
+try:
+    import openai
+except ImportError:
+    openai = None
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.ERROR)
@@ -277,7 +284,10 @@ def chat(client, prompt):
             import platform
             distribution = f"Windows {platform.release()}"
         else:
-            distribution = distro.name()
+            if distro:
+                distribution = distro.name()
+            else:
+                distribution = "Linux"
         history.append(
             {
                 "role": "system",
@@ -303,9 +313,12 @@ def get_cmd(client, prompt, context_prompt=""):
         import platform
         distribution = f"Windows {platform.release()}"
     else:
-        distribution = distro.like()
-        if distribution is None or distribution == "":
-            distribution = distro.name()
+        if distro:
+            distribution = distro.like()
+            if distribution is None or distribution == "":
+                distribution = distro.name()
+        else:
+            distribution = "Linux"
     log.debug("Distribution: %s" % distribution)
 
     response = client.chat.completions.create(
@@ -335,9 +348,12 @@ def get_cmd_list(client, prompt, context_files=[], n=5):
         import platform
         distribution = f"Windows {platform.release()}"
     else:
-        distribution = distro.like()
-        if distribution is None or distribution == "":
-            distribution = distro.name()
+        if distro:
+            distribution = distro.like()
+            if distribution is None or distribution == "":
+                distribution = distro.name()
+        else:
+            distribution = "Linux"
     log.debug("Distribution: %s" % distribution)
     context_prompt = get_context_files()
 
@@ -504,6 +520,10 @@ if __name__ == "__main__":
 
     # get the api key
     api_key = get_api_key()
+
+    if openai is None:
+        print("Error: openai package is not installed. Please run: pip install openai")
+        sys.exit(1)
 
     client = openai.OpenAI(api_key=api_key)
 
