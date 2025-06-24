@@ -1,0 +1,66 @@
+#!/bin/bash
+
+VERSION="0.1.0"
+ENV_NAME=bashai
+ENV_PATH=~/.virtualenvs/$ENV_NAME
+COMMAND_PATH=$(cd $(dirname $0); pwd)/ai.py
+REQ_PATH=$(cd $(dirname $0); pwd)/requirements.txt
+
+
+function check_python() {
+    # Check if python3 exists
+    if [ ! -f "/usr/bin/python3" ]; then
+        echo "You need to install python3"
+        exit 1
+    fi
+
+    # check python version is 3.7.1 or higher
+    PYTHON_VERSION=$(python3 -V 2>&1 | awk '{print $2}')
+    MIN_VERSION="3.7.1"
+    if [[ "$(printf '%s\n' "$PYTHON_VERSION" "$MIN_VERSION" | sort -V | head -n1)" != "$MIN_VERSION" ]]; then
+        echo "You need to install python $MIN_VERSION or higher (current version: $PYTHON_VERSION)"
+        exit 1
+    fi
+}
+
+function check_pip_packages_version() {
+    # Check if pip packages are up to date once a day using bash command touch
+    if [ ! -f "$ENV_PATH/.last_update" ]; then
+        touch $ENV_PATH/.last_update
+    fi
+
+    # Check if last update was more than a week ago
+    LAST_UPDATE=$(date -r $ENV_PATH/.last_update +%s)
+    NOW=$(date +%s)
+    DIFF=$(( $NOW - $LAST_UPDATE ))
+
+    # Check version saved in last_update file
+    # Read the version from the file
+    LAST_VERSION=$(cat $ENV_PATH/.last_update)
+
+    if [ $DIFF -gt 604800 ] || [ "$LAST_VERSION" != "$VERSION" ]; then
+        echo "Updating pip packages..."
+        pip3 install -q --upgrade pip
+        pip3 install -q --upgrade -r $REQ_PATH
+        touch $ENV_PATH/.last_update
+        echo "Pip packages updated!"
+        echo $VERSION > $ENV_PATH/.last_update
+    fi
+    
+}
+
+
+check_python
+
+if [ ! -d "$ENV_PATH" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv $ENV_PATH
+    source $ENV_PATH/bin/activate
+    pip install -r $REQ_PATH
+else
+    source $ENV_PATH/bin/activate
+fi
+
+check_pip_packages_version
+
+python $COMMAND_PATH $@
