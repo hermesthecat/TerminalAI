@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 from collections import OrderedDict
+import configparser
 
 try:
     import distro
@@ -29,7 +30,7 @@ logging.basicConfig(
     level=logging.ERROR, format="[%(name)s]\t%(asctime)s - %(levelname)s \t %(message)s"
 )
 
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 PLATFORM = platform.system()
 if PLATFORM == "Linux":
     CACHE_FOLDER = "/opt/TerminalAI"
@@ -41,6 +42,26 @@ elif PLATFORM == "Windows":
 else:
     # Fallback for unknown platforms
     CACHE_FOLDER = "/opt/TerminalAI"
+
+CONFIG_FILE = os.path.join(CACHE_FOLDER, "config.ini")
+
+def get_config():
+    """Reads and returns the configuration from config.ini."""
+    config = configparser.ConfigParser()
+    # To preserve case
+    config.optionxform = str
+    
+    # ensure cache folder exists
+    if not os.path.exists(os.path.expanduser(CACHE_FOLDER)):
+        os.makedirs(os.path.expanduser(CACHE_FOLDER))
+            
+    config.read(CONFIG_FILE)
+    return config
+
+def save_config(config):
+    """Saves the configuration to config.ini."""
+    with open(CONFIG_FILE, 'w') as configfile:
+        config.write(configfile)
 
 
 def cache(maxsize=128):
@@ -86,59 +107,41 @@ def cache(maxsize=128):
 
 
 def get_api_key():
-    # load the api key from CACHE_FOLDER/openai
-    config_file = os.path.expanduser(CACHE_FOLDER + "/openai")
-    if os.path.exists(config_file):
-        with open(config_file) as f:
-            return f.read().strip()
-    else:
-        print("No api key found. Please create a file " + CACHE_FOLDER + "/openai with your api key in it.")
-        # ask for key and store it
-        api_key = input("Please enter your OpenAI API key: ")
-        if api_key == "":
-            print("No api key provided. Exiting.")
-            sys.exit(1)
-        # make sure the directory exists
-        if not os.path.exists(os.path.expanduser(CACHE_FOLDER)):
-            os.mkdir(os.path.expanduser(CACHE_FOLDER))
-        with open(config_file, "w") as f:
-            f.write(api_key)
+    config = get_config()
+    if not config.has_section('API'):
+        config.add_section('API')
 
-        return api_key
+    api_key = config.get('API', 'key', fallback=None)
+    
+    if not api_key:
+        print("No API key found in " + CONFIG_FILE)
+        api_key = input("Please enter your OpenAI API key: ")
+        if not api_key:
+            print("No API key provided. Exiting.")
+            sys.exit(1)
+        config.set('API', 'key', api_key)
+        save_config(config)
+
+    return api_key
 
 
 def get_api_base_url():
-    # load the api base url from CACHE_FOLDER/openai_base_url
-    config_file = os.path.expanduser(CACHE_FOLDER + "/openai_base_url")
-    if os.path.exists(config_file):
-        with open(config_file) as f:
-            base_url = f.read().strip()
-            return base_url if base_url else None
-    return None
+    config = get_config()
+    return config.get('API', 'base_url', fallback=None)
 
 
 def get_model_name():
-    # load the model name from CACHE_FOLDER/openai_model
-    config_file = os.path.expanduser(CACHE_FOLDER + "/openai_model")
-    if os.path.exists(config_file):
-        with open(config_file) as f:
-            model = f.read().strip()
-            return model if model else "gpt-4o-mini"
-    return "gpt-4o-mini"
+    config = get_config()
+    return config.get('Settings', 'model', fallback='gpt-4o-mini')
 
 
 def get_safety_mode():
-    # load safety mode from CACHE_FOLDER/openai_safety_mode
-    # 0 = always ask (default), 1 = auto-run safe commands
-    config_file = os.path.expanduser(CACHE_FOLDER + "/openai_safety_mode")
-    if os.path.exists(config_file):
-        with open(config_file) as f:
-            try:
-                mode = int(f.read().strip())
-                return mode if mode in [0, 1] else 0
-            except:
-                return 0
-    return 0
+    config = get_config()
+    try:
+        mode = config.getint('Settings', 'safety_mode', fallback=0)
+        return mode if mode in [0, 1] else 0
+    except (ValueError, configparser.NoSectionError):
+        return 0
 
 
 def analyze_command_safety(cmd):
@@ -193,36 +196,27 @@ def analyze_command_safety(cmd):
 
 
 def setup_api_configuration():
-    """Interactive setup for API key and base URL"""
-    print("\n=== OpenAI API Configuration ===")
+    """Interactive setup for API key and base URL using config.ini"""
+    config = get_config()
+
+    print("\n=== TerminalAI Configuration (config.ini) ===")
     
-    # Current API key
-    current_key = ""
-    config_file = os.path.expanduser(CACHE_FOLDER + "/openai")
-    if os.path.exists(config_file):
-        with open(config_file) as f:
-            current_key = f.read().strip()
-        print(f"Current API key: {current_key[:10]}...{current_key[-4:] if len(current_key) > 14 else current_key}")
-    else:
-        print("No API key configured")
-    
-    # Current base URL
-    base_url_file = os.path.expanduser(CACHE_FOLDER + "/openai_base_url")
-    current_base_url = ""
-    if os.path.exists(base_url_file):
-        with open(base_url_file) as f:
-            current_base_url = f.read().strip()
-        print(f"Current API base URL: {current_base_url if current_base_url else 'Default (OpenAI)'}")
-    else:
-        print("Current API base URL: Default (OpenAI)")
-    
-    # Current model
-    current_model = get_model_name()
+    # Ensure sections exist
+    if not config.has_section('API'):
+        config.add_section('API')
+    if not config.has_section('Settings'):
+        config.add_section('Settings')
+
+    # Current values
+    current_key = config.get('API', 'key', fallback='')
+    current_base_url = config.get('API', 'base_url', fallback='')
+    current_model = config.get('Settings', 'model', fallback='gpt-4o-mini')
+    current_safety_mode = get_safety_mode()
+
+    print(f"Current API key: {current_key[:4]}...{current_key[-4:] if len(current_key) > 8 else ''}")
+    print(f"Current API base URL: {current_base_url if current_base_url else 'Default (OpenAI)'}")
     print(f"Current model: {current_model}")
-    
-    # Current safety mode
-    safety_mode = get_safety_mode()
-    safety_mode_desc = "Always ask for confirmation" if safety_mode == 0 else "Auto-run safe commands"
+    safety_mode_desc = "Always ask for confirmation" if current_safety_mode == 0 else "Auto-run safe commands"
     print(f"Current safety mode: {safety_mode_desc}")
     
     print("\nOptions:")
@@ -231,19 +225,18 @@ def setup_api_configuration():
     print("3. Update model name")
     print("4. Update safety mode")
     print("5. Reset to OpenAI defaults")
-    print("6. Continue with current settings")
+    print("6. Exit")
     
     choice = input("\nSelect option (1-6): ").strip()
     
     if choice == "1":
         new_key = input("Enter new API key: ").strip()
         if new_key:
-            os.makedirs(os.path.dirname(config_file), exist_ok=True)
-            with open(config_file, "w") as f:
-                f.write(new_key)
+            config.set('API', 'key', new_key)
+            save_config(config)
             print("API key updated!")
         else:
-            print("API key not changed")
+            print("API key not changed.")
     
     elif choice == "2":
         print("\nPopular OpenAI-compatible APIs:")
@@ -254,15 +247,14 @@ def setup_api_configuration():
         print("- LM Studio: http://localhost:1234/v1")
         
         new_base_url = input("\nEnter API base URL (leave empty for OpenAI default): ").strip()
-        os.makedirs(os.path.dirname(base_url_file), exist_ok=True)
-        with open(base_url_file, "w") as f:
-            f.write(new_base_url)
-        
         if new_base_url:
+            config.set('API', 'base_url', new_base_url)
             print(f"API base URL set to: {new_base_url}")
-        else:
-            print("API base URL reset to OpenAI default")
-    
+        elif config.has_option('API', 'base_url'):
+            config.remove_option('API', 'base_url')
+            print("API base URL reset to OpenAI default.")
+        save_config(config)
+
     elif choice == "3":
         print("\nPopular models by provider:")
         print("OpenAI:")
@@ -280,13 +272,11 @@ def setup_api_configuration():
         
         new_model = input(f"\nEnter model name (current: {current_model}): ").strip()
         if new_model:
-            model_file = os.path.expanduser(CACHE_FOLDER + "/openai_model")
-            os.makedirs(os.path.dirname(model_file), exist_ok=True)
-            with open(model_file, "w") as f:
-                f.write(new_model)
+            config.set('Settings', 'model', new_model)
+            save_config(config)
             print(f"Model set to: {new_model}")
         else:
-            print("Model not changed")
+            print("Model not changed.")
     
     elif choice == "4":
         print("\nSafety Modes:")
@@ -294,13 +284,11 @@ def setup_api_configuration():
         print("1 - Auto-run commands that appear safe, ask for confirmation on potentially dangerous commands")
         
         try:
-            new_mode = int(input("\nEnter safety mode (0 or 1): ").strip())
+            new_mode_str = input("\nEnter safety mode (0 or 1): ").strip()
+            new_mode = int(new_mode_str)
             if new_mode in [0, 1]:
-                safety_file = os.path.expanduser(CACHE_FOLDER + "/openai_safety_mode")
-                os.makedirs(os.path.dirname(safety_file), exist_ok=True)
-                with open(safety_file, "w") as f:
-                    f.write(str(new_mode))
-                
+                config.set('Settings', 'safety_mode', str(new_mode))
+                save_config(config)
                 mode_desc = "Always ask for confirmation" if new_mode == 0 else "Auto-run safe commands"
                 print(f"Safety mode set to: {mode_desc}")
             else:
@@ -310,21 +298,18 @@ def setup_api_configuration():
     
     elif choice == "5":
         # Reset to defaults
-        files_to_remove = [
-            os.path.expanduser(CACHE_FOLDER + "/openai_base_url"),
-            os.path.expanduser(CACHE_FOLDER + "/openai_model"),
-            os.path.expanduser(CACHE_FOLDER + "/openai_safety_mode")
-        ]
-        for file_path in files_to_remove:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        print("Reset to OpenAI defaults (gpt-4o-mini, always ask for confirmation). API key kept unchanged.")
+        if config.has_option('API', 'base_url'):
+            config.remove_option('API', 'base_url')
+        config.set('Settings', 'model', 'gpt-4o-mini')
+        config.set('Settings', 'safety_mode', '0')
+        save_config(config)
+        print("Reset to OpenAI defaults (gpt-4o-mini, always ask). API key kept unchanged.")
     
     elif choice == "6":
-        print("Continuing with current settings...")
+        print("Exiting configuration menu.")
     
     else:
-        print("Invalid choice, continuing with current settings...")
+        print("Invalid choice. Exiting configuration menu.")
     
     print("=" * 35)
 
@@ -742,6 +727,7 @@ def signal_handler(sig, frame):
 
 
 if __name__ == "__main__":
+    
     # get the command from the user
     parser = argparse.ArgumentParser()
     parser.add_argument(

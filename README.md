@@ -2,7 +2,7 @@
 
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
-## New Version (0.3.1)
+## New Version (0.4.0)
 
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
@@ -11,6 +11,7 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - **New:** Support for custom API providers (OpenAI, Azure, LocalAI, Ollama, etc.)
 - **New:** Configurable model selection
 - **New:** Customizable safety patterns via external files
+- **New:** Centralized configuration via a single `config.ini` file.
 
 ### Known Issues
 
@@ -162,11 +163,11 @@ The executable build creates:
 - Portable across Windows systems
 - Ideal for corporate environments with restricted software installation
 
-### Configuration Paths
+### Configuration File
 
-TerminalAI now stores configuration in these locations:
+All TerminalAI settings are now stored in a single `config.ini` file. This file is located in the following directory depending on your operating system:
 
-- **Linux:** /opt/TerminalAI
-- **macOS:** /opt/TerminalAI
-- **Windows:** C:/TerminalAI
-- **Other platforms:** /opt/TerminalAI
+- **Linux/macOS:** `/opt/TerminalAI/`
+- **Windows:** `C:/TerminalAI/`
+
+The `config.ini` file will be created automatically the first time you run `ai` or use the `ai --config` command.
