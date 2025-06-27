@@ -38,15 +38,12 @@ Or using PowerShell directly:
 
 #### Windows Standalone Executable
 
-For systems without Python, you can build a standalone executable:
+For systems without Python, you can build a standalone executable during the installation process:
 
-    # Install first, then build executable
+    # Install and build the executable at the same time
     .\install.ps1 -BuildExe
 
-Or build separately:
-    .\build_exe.ps1
-
-This creates a portable `ai.exe` that works without Python installation.
+This creates a portable `ai.exe` in the `dist` folder that works without a Python installation.
 
 First time you run ai, it will install dependencies in a virtual environment and it will ask for the key to the api.
 
@@ -58,11 +55,9 @@ You can get the key from [here](https://platform.openai.com/api-keys)
 
 ### Configuration
 
-You can configure API settings, model selection, and safety options:
+You can configure API settings, model selection, and safety options via an interactive menu:
 
-```bash
-ai --config
-```
+    ai --config
 
 This opens an interactive menu with the following options:
 
@@ -96,16 +91,13 @@ These files are created automatically with default patterns when the program run
 
 Example of adding custom patterns:
 
-```bash
+    # In dangerous_patterns.txt
+    # Add custom dangerous pattern
+    custom-dangerous-command\s+  # My custom dangerous command
 
-# In dangerous_patterns.txt
-# Add custom dangerous pattern
-custom-dangerous-command\s+  # My custom dangerous command
-
-# In safe_patterns.txt
-# Add custom safe pattern
-custom-safe-command\s+  # My custom safe command
-```
+    # In safe_patterns.txt
+    # Add custom safe pattern
+    custom-safe-command\s+  # My custom safe command
 
 Lines starting with `#` are treated as comments and ignored.
 
@@ -132,9 +124,9 @@ Choose from various models depending on your API provider:
 
 `ai` is aware of the distro used. It will use the correct package manager to install dependencies.
 
-On Windows, it detects Windows version and uses appropriate Windows commands (cmd, PowerShell, Windows-specific tools).
+On Windows, it detects Windows version and uses appropriate Windows commands (cmd, PowerShell, Windows-specific-tools).
 
-`-c` option will add the content of the current directory to the context. This will generate a better result. But it will significantly increase the number of tokens used.
+`-c` option will add the content of the current directory to the context. This will generate a better result. But it will significantly increase the number of tokens used. For example, if you are in a directory with a `docker-compose.yml` and ask `ai -c "restart the web server"`, TerminalAI will use the contents of `docker-compose.yml` to figure out that "web server" corresponds to the `nginx` service and generate the command `docker-compose restart nginx`.
 
 `-e` option will generate an explanation of the command. This will significantly increase the number of tokens used.
 
@@ -149,21 +141,13 @@ On Windows, it detects Windows version and uses appropriate Windows commands (cm
 
 #### Building Standalone Executable
 
-The Windows version can be compiled into a standalone executable using PyInstaller:
+The Windows version can be compiled into a standalone executable using PyInstaller. This is done via a command-line flag during the normal installation process.
 
-```bash
-# Build with default settings (single file, optimized)
-.\build_exe.ps1
+    # Install and build with default settings (single file, optimized)
+    .\install.ps1 -BuildExe
 
-# Build with debug information
-.\build_exe.ps1 -Debug
-
-# Clean build and rebuild
-.\build_exe.ps1 -Clean
-
-# Build during installation
-.\install.ps1 -BuildExe
-```
+    # The installer also supports debug builds if needed
+    # .\install.ps1 -BuildExe -Debug
 
 The executable build creates:
 
