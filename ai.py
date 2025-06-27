@@ -30,7 +30,7 @@ logging.basicConfig(
     level=logging.ERROR, format="[%(name)s]\t%(asctime)s - %(levelname)s \t %(message)s"
 )
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 PLATFORM = platform.system()
 if PLATFORM == "Linux":
     CACHE_FOLDER = "/opt/TerminalAI"
@@ -382,16 +382,37 @@ def setup_api_configuration():
 
 
 def get_context_files():
-    context_files = os.listdir(os.getcwd())
+    """
+    Gets context from files in the current directory.
+    It lists all files and reads the content of important project files.
+    """
+    IMPORTANT_FILES = [
+        'docker-compose.yml', 'docker-compose.yaml', 'Dockerfile',
+        'package.json', 'requirements.txt', 'pom.xml', 'build.gradle',
+        'Makefile', '.gitlab-ci.yml', '.travis.yml', 'pyproject.toml'
+    ]
+    MAX_CONTENT_LENGTH = 2000  # Max characters to read from each important file
+
     context_prompt = ""
-    # add the current folder to the prompt
-    if len(context_files) > 0:
-        context_prompt = (
-            "The command is executed in folder %s contining the following list of files:\n"
-            % (os.getcwd())
-        )
-        # add the files to the prompt
-        context_prompt += "\n".join(context_files)
+    try:
+        files_in_dir = os.listdir(os.getcwd())
+        context_prompt += "The command is executed in a folder containing the following files:\n%s\n" % ", ".join(files_in_dir)
+
+        for filename in files_in_dir:
+            if filename in IMPORTANT_FILES:
+                try:
+                    with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read(MAX_CONTENT_LENGTH)
+                        context_prompt += f"\nThe content of '{filename}' is:\n---
+{content}\n"
+                        if len(content) == MAX_CONTENT_LENGTH:
+                            context_prompt += "... (file content truncated)\n"
+                        context_prompt += "---\n"
+                except Exception as e:
+                    log.warning(f"Could not read content of {filename}: {e}")
+    except Exception as e:
+        log.error(f"Could not list directory to create context: {e}")
+    
     return context_prompt
 
 

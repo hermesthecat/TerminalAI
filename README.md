@@ -2,7 +2,7 @@
 
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
-## New Version (0.7.0)
+## New Version (0.8.0)
 
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
@@ -15,6 +15,7 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - **New:** Auto-correct on failure: AI suggests a fix when a command fails.
 - **New:** Multi-step command execution for complex tasks.
 - **New:** Interactive command history (`ai --history`) for re-running previous commands.
+- **New:** Smart Context Analysis (`-c` flag) that reads important project files.
 
 ### Known Issues
 
@@ -160,6 +161,13 @@ Choose from various models depending on your API provider:
 On Windows, it detects Windows version and uses appropriate Windows commands (cmd, PowerShell, Windows-specific-tools).
 
 `-c` option will add the content of the current directory to the context. This will generate a better result. But it will significantly increase the number of tokens used. For example, if you are in a directory with a `docker-compose.yml` and ask `ai -c "restart the web server"`, TerminalAI will use the contents of `docker-compose.yml` to figure out that "web server" corresponds to the `nginx` service and generate the command `docker-compose restart nginx`.
+
+### Smart Context Analysis (`-c` flag)
+
+The `-c` flag makes TerminalAI project-aware. When used, it doesn't just list files; it intelligently reads the content of key project files to provide rich context to the AI.
+
+- **How it works:** When you use `ai -c "your request"`, the script automatically detects and reads files like `docker-compose.yml`, `package.json`, `requirements.txt`, `Makefile`, etc., in your current directory.
+- **Benefit:** This allows the AI to understand your project's structure, dependencies, and available scripts, resulting in highly accurate and context-specific commands. For example, asking to "run tests" in a Node.js project will correctly use the test script defined in your `package.json`.
 
 `-e` option will generate an explanation of the command. This will significantly increase the number of tokens used.
 
