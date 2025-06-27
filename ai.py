@@ -30,7 +30,7 @@ logging.basicConfig(
     level=logging.ERROR, format="[%(name)s]\t%(asctime)s - %(levelname)s \t %(message)s"
 )
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 PLATFORM = platform.system()
 if PLATFORM == "Linux":
     CACHE_FOLDER = "/opt/TerminalAI"
@@ -153,6 +153,15 @@ def get_autocorrect_mode():
         return False
 
 
+def get_multi_step_mode():
+    """Reads the multi-step execution setting from config.ini."""
+    config = get_config()
+    try:
+        return config.getboolean('Settings', 'multi_step', fallback=False)
+    except (ValueError, configparser.NoSectionError):
+        return False
+
+
 def analyze_command_safety(cmd):
     """
     Analyzes a command for safety risks
@@ -222,6 +231,7 @@ def setup_api_configuration():
     current_model = config.get('Settings', 'model', fallback='gpt-4o-mini')
     current_safety_mode = get_safety_mode()
     current_autocorrect_mode = get_autocorrect_mode()
+    current_multi_step_mode = get_multi_step_mode()
 
     print(f"Current API key: {current_key[:4]}...{current_key[-4:] if len(current_key) > 8 else ''}")
     print(f"Current API base URL: {current_base_url if current_base_url else 'Default (OpenAI)'}")
@@ -230,6 +240,8 @@ def setup_api_configuration():
     print(f"Current safety mode: {safety_mode_desc}")
     autocorrect_desc = "Enabled" if current_autocorrect_mode else "Disabled"
     print(f"Current auto-correct mode: {autocorrect_desc}")
+    multi_step_desc = "Enabled" if current_multi_step_mode else "Disabled"
+    print(f"Current multi-step mode: {multi_step_desc}")
     
     print("\nOptions:")
     print("1. Update API key")
@@ -237,10 +249,11 @@ def setup_api_configuration():
     print("3. Update model name")
     print("4. Update safety mode")
     print("5. Update auto-correct on failure")
-    print("6. Reset to OpenAI defaults")
-    print("7. Exit")
+    print("6. Update multi-step commands")
+    print("7. Reset to OpenAI defaults")
+    print("8. Exit")
     
-    choice = input("\nSelect option (1-7): ").strip()
+    choice = input("\nSelect option (1-8): ").strip()
     
     if choice == "1":
         new_key = input("Enter new API key: ").strip()
@@ -329,16 +342,36 @@ def setup_api_configuration():
             print(f"An error occurred: {e}")
     
     elif choice == "6":
+        print("\nMulti-Step Commands:")
+        print("Enable this to allow the AI to generate a sequence of commands for complex tasks.")
+        
+        try:
+            enable_str = input(f"Enable multi-step commands? (currently {'Enabled' if current_multi_step_mode else 'Disabled'}) [y/n]: ").strip().lower()
+            if enable_str in ['y', 'yes']:
+                config.set('Settings', 'multi_step', 'True')
+                save_config(config)
+                print("Multi-step commands enabled.")
+            elif enable_str in ['n', 'no']:
+                config.set('Settings', 'multi_step', 'False')
+                save_config(config)
+                print("Multi-step commands disabled.")
+            else:
+                print("Invalid input. Setting not changed.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    
+    elif choice == "7":
         # Reset to defaults
         if config.has_option('API', 'base_url'):
             config.remove_option('API', 'base_url')
         config.set('Settings', 'model', 'gpt-4o-mini')
         config.set('Settings', 'safety_mode', '0')
         config.set('Settings', 'autocorrect', 'False')
+        config.set('Settings', 'multi_step', 'False')
         save_config(config)
-        print("Reset to OpenAI defaults (gpt-4o-mini, always ask, auto-correct off). API key kept unchanged.")
+        print("Reset to OpenAI defaults (gpt-4o-mini, always ask, auto-correct off, multi-step off). API key kept unchanged.")
     
-    elif choice == "7":
+    elif choice == "8":
         print("Exiting configuration menu.")
     
     else:
@@ -598,14 +631,22 @@ def get_cmd(client, prompt, context_prompt=""):
             system_info = f"{PLATFORM}"
     log.debug("Distribution: %s" % distribution)
 
+    multi_step_enabled = get_multi_step_mode()
+    if multi_step_enabled:
+        system_message_content = f"You can output a sequence of terminal commands separated by newlines. No info! No comments. No backticks. This system is running on {system_info}. If the user's request requires multiple steps (e.g., 'clone a repo, cd into it, and run npm install'), provide each command on a new line. Otherwise, provide a single command."
+        user_message_content = "Generate the necessary command(s) to %s\n%s" % (prompt, context_prompt)
+    else:
+        system_message_content = f"You can output only a single terminal command! No info! No comments. No backticks. This system is running on {system_info}. If on Windows, use PowerShell or CMD commands, NOT Linux/Unix commands."
+        user_message_content = "Generate a single bash command to %s\n%s" % (prompt, context_prompt)
+
     model_name = get_model_name()
     response = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system", "content": f"You can output only terminal commands! No info! No comments. No backticks. This system is running on {system_info}. If on Windows, use PowerShell or CMD commands, NOT Linux/Unix commands."},
-            {"role": "user", "content": "Generate a single bash command to %s\n%s" % (prompt, context_prompt)},
+            {"role": "system", "content": system_message_content},
+            {"role": "user", "content": user_message_content},
         ],
-        max_tokens=100,
+        max_tokens=250,
         temperature=0,
         top_p=1,
     )
@@ -940,59 +981,12 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # get the command from the ai
-    cmd = get_cmd(client, prompt, context_prompt=context_prompt)
+    cmd_or_sequence = get_cmd(client, prompt, context_prompt=context_prompt)
+    commands = [c.strip() for c in cmd_or_sequence.split('\n') if c.strip()]
 
-    if args.e:
-        print_explaination(client, cmd)
-
-    # print the command colorized
-    print("AI wants to execute \n\033[1;32m%s\033[0m\n" % cmd)
-
-    # Analyze command safety
-    is_safe, safety_reason = analyze_command_safety(cmd)
-    safety_mode = get_safety_mode()
-    
-    # Show safety assessment
-    if is_safe:
-        print(f"Safety assessment: \033[1;32mSafe\033[0m - {safety_reason}")
-    else:
-        print(f"Safety assessment: \033[1;31mPotentially dangerous\033[0m - {safety_reason}")
-    
-    # Determine if we need user confirmation
-    need_confirmation = True
-    if safety_mode == 1 and is_safe:
-        need_confirmation = False
-        print("Auto-executing safe command (safety mode: auto-run safe commands)")
-    
-    # validate the command
-    if need_confirmation and input("Do you want to execute this command? [Y/n] ").lower() == "n":
-        # execute the command with Popen and save it to the history
-        cmds = get_cmd_list(client, prompt, context_files=context_files, n=args.n)
-        print("Here are some other commands you might want to execute:")
-        index = 0
-        for cmd in cmds:
-            print("%d. \033[1;32m%s\033[0m" % (index, cmd))
-            # Analyze alternative command safety
-            alt_is_safe, alt_safety_reason = analyze_command_safety(cmd)
-            if alt_is_safe:
-                print(f"   Safety: \033[1;32mSafe\033[0m - {alt_safety_reason}")
-            else:
-                print(f"   Safety: \033[1;31mPotentially dangerous\033[0m - {alt_safety_reason}")
-                
-            if args.e:
-                print_explaination(client, cmd)
-                print("\n")
-
-            index += 1
-
-        choice = input(
-            "Do you want to execute one of these commands? [0-%d] " % (index - 1)
-        )
-        if choice.isdigit() and int(choice) < index:
-            cmd = cmds[int(choice)]
-        else:
-            print("No command executed.")
-            sys.exit(1)
+    if not commands:
+        print("Error: AI did not return a valid command.")
+        sys.exit(1)
 
     # retrieve the shell
     if PLATFORM == "Windows":
@@ -1008,6 +1002,101 @@ if __name__ == "__main__":
         if shell is None:
             shell = "/bin/bash"
         shell_type = "unix"
+
+    # Handle single command case
+    if len(commands) == 1:
+        cmd = commands[0]
+        if args.e:
+            print_explaination(client, cmd)
+
+        # print the command colorized
+        print("AI wants to execute \n\033[1;32m%s\033[0m\n" % cmd)
+
+        # Analyze command safety
+        is_safe, safety_reason = analyze_command_safety(cmd)
+        safety_mode = get_safety_mode()
+        
+        # Show safety assessment
+        if is_safe:
+            print(f"Safety assessment: \033[1;32mSafe\033[0m - {safety_reason}")
+        else:
+            print(f"Safety assessment: \033[1;31mPotentially dangerous\033[0m - {safety_reason}")
+        
+        # Determine if we need user confirmation
+        need_confirmation = True
+        if safety_mode == 1 and is_safe:
+            need_confirmation = False
+            print("Auto-executing safe command (safety mode: auto-run safe commands)")
+        
+        # validate the command
+        if need_confirmation and input("Do you want to execute this command? [Y/n] ").lower() == "n":
+            # execute the command with Popen and save it to the history
+            cmds = get_cmd_list(client, prompt, context_files=context_files, n=args.n)
+            print("Here are some other commands you might want to execute:")
+            index = 0
+            for cmd_alt in cmds:
+                print("%d. \033[1;32m%s\033[0m" % (index, cmd_alt))
+                # Analyze alternative command safety
+                alt_is_safe, alt_safety_reason = analyze_command_safety(cmd_alt)
+                if alt_is_safe:
+                    print(f"   Safety: \033[1;32mSafe\033[0m - {alt_safety_reason}")
+                else:
+                    print(f"   Safety: \033[1;31mPotentially dangerous\033[0m - {alt_safety_reason}")
+                    
+                if args.e:
+                    print_explaination(client, cmd_alt)
+                    print("\n")
+
+                index += 1
+
+            choice = input(
+                "Do you want to execute one of these commands? [0-%d] " % (index - 1)
+            )
+            if choice.isdigit() and int(choice) < index:
+                cmd = cmds[int(choice)]
+            else:
+                print("No command executed.")
+                sys.exit(1)
+    
+    # Handle multi-step command case
+    else:
+        print("AI wants to execute the following sequence of commands:")
+        all_safe = True
+        for i, c in enumerate(commands):
+            is_safe, safety_reason = analyze_command_safety(c)
+            if not is_safe:
+                all_safe = False
+            color = "\033[1;32m" if is_safe else "\033[1;31m"
+            print(f"  {i+1}. {color}{c}\033[0m  ({safety_reason})")
+        
+        print("")
+        
+        safety_mode = get_safety_mode()
+        need_confirmation = True
+        if safety_mode == 1 and all_safe:
+            need_confirmation = False
+            print("Auto-executing safe command sequence (safety mode: auto-run safe commands)")
+
+        if need_confirmation and input("Do you want to execute this entire sequence? [Y/n] ").lower() == "n":
+            print("No commands executed.")
+            sys.exit(1)
+        
+        for idx, cmd in enumerate(commands):
+            print(f"\n--- Executing step {idx+1}/{len(commands)}: \033[1;32m{cmd}\033[0m ---")
+            result = execute_and_handle_history(cmd, shell_type, shell)
+
+            if result.stdout:
+                print(result.stdout, end='')
+            if result.stderr:
+                print(f"\033[1;31m{result.stderr}\033[0m", file=sys.stderr, end='')
+
+            if result.returncode != 0:
+                print(f"\n\033[1;31mCommand failed with exit code {result.returncode}. Aborting sequence.\033[0m")
+                sys.exit(result.returncode)
+        
+        print("\n\033[1;32mSequence executed successfully.\033[0m")
+        sys.exit(0)
+
 
     # Execute command, save history, and capture output
     result = execute_and_handle_history(cmd, shell_type, shell)

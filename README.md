@@ -2,7 +2,7 @@
 
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
-## New Version (0.5.0)
+## New Version (0.6.0)
 
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
@@ -13,6 +13,7 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - **New:** Customizable safety patterns via external files
 - **New:** Centralized configuration via a single `config.ini` file.
 - **New:** Auto-correct on failure: AI suggests a fix when a command fails.
+- **New:** Multi-step command execution for complex tasks.
 
 ### Known Issues
 
@@ -68,8 +69,9 @@ This opens an interactive menu with the following options:
 3. Update model name
 4. Update safety mode
 5. Update auto-correct on failure
-6. Reset to OpenAI defaults
-7. Exit
+6. Update multi-step commands
+7. Reset to OpenAI defaults
+8. Exit
 
 ### Command Safety Analysis
 
@@ -110,6 +112,15 @@ When a command fails (i.e., exits with a non-zero status code), TerminalAI can a
 
 - **How it works:** If a command fails and produces an error message (`stderr`), TerminalAI sends the failed command and the error message back to the AI, asking for a corrected command.
 - **Confirmation:** You will be shown the suggested fix and asked for confirmation before the new command is executed.
+- **Configuration:** This feature is disabled by default. You can enable it via the `ai --config` menu.
+
+### Multi-Step Command Execution
+
+For complex requests that require more than one command (e.g., "clone a repo, enter the directory, and install dependencies"), TerminalAI can generate a sequence of commands.
+
+- **How it works:** When enabled, the AI can return a list of commands. The script will show you the entire sequence, with a safety analysis for each step.
+- **Confirmation:** You will be asked to approve the entire sequence before execution begins. If you decline, no commands will be run.
+- **Execution:** If you approve, the commands are executed one by one. If any command in the sequence fails, the execution stops immediately.
 - **Configuration:** This feature is disabled by default. You can enable it via the `ai --config` menu.
 
 ### Custom API Providers

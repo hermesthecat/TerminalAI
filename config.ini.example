@@ -18,4 +18,9 @@ safety_mode = 0
 ; Başarısız komutlar için otomatik düzeltme özelliği.
 ; True = Etkin. AI, başarısız bir komutu düzeltmeye çalışır.
 ; False = Devre dışı (varsayılan).
-autocorrect = False 
+autocorrect = False
+
+; Çok adımlı görevleri etkinleştir.
+; True = AI, birden çok adımdan oluşan istekler için bir komut dizisi döndürebilir.
+; False = AI, her zaman tek bir komut döndürür (varsayılan).
+multi_step = False 
