@@ -30,7 +30,7 @@ logging.basicConfig(
     level=logging.ERROR, format="[%(name)s]\t%(asctime)s - %(levelname)s \t %(message)s"
 )
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 PLATFORM = platform.system()
 if PLATFORM == "Linux":
     CACHE_FOLDER = "/opt/TerminalAI"
@@ -44,6 +44,7 @@ else:
     CACHE_FOLDER = "/opt/TerminalAI"
 
 CONFIG_FILE = os.path.join(CACHE_FOLDER, "config.ini")
+COMMAND_HISTORY_FILE = os.path.join(CACHE_FOLDER, "command_history.pkl")
 
 def get_config():
     """Reads and returns the configuration from config.ini."""
@@ -828,6 +829,84 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
+def load_command_history():
+    """Loads the command history."""
+    if not os.path.exists(COMMAND_HISTORY_FILE):
+        return []
+    try:
+        with open(COMMAND_HISTORY_FILE, "rb") as f:
+            history = pickle.load(f)
+            return history if isinstance(history, list) else []
+    except (EOFError, pickle.UnpicklingError):
+        return []
+
+def save_command_history(history, limit=100):
+    """Saves the command history."""
+    with open(COMMAND_HISTORY_FILE, "wb") as f:
+        history = history[-limit:]
+        pickle.dump(history, f)
+
+def add_to_command_history(command):
+    """Adds a successfully executed command to the history."""
+    history = load_command_history()
+    # Avoid adding the same command consecutively
+    if not history or history[-1] != command:
+        history.append(command)
+        save_command_history(history)
+
+
+def manage_command_history():
+    """Displays command history and allows re-execution."""
+    history = load_command_history()
+    if not history:
+        print("Command history is empty.")
+        return
+
+    print("\n--- AI Command History ---")
+    for i, cmd in enumerate(history):
+        print(f"{i+1: >3}: {cmd}")
+    print("--------------------------")
+
+    try:
+        choice = input("Enter a number to re-run a command, or 'q' to quit: ").strip()
+        if choice.lower() == 'q' or not choice:
+            return
+        
+        choice_idx = int(choice) - 1
+        if 0 <= choice_idx < len(history):
+            cmd_to_run = history[choice_idx]
+            print(f"Selected command: \033[1;32m{cmd_to_run}\033[0m")
+            if input("Execute this command? [Y/n] ").lower() != 'n':
+                # Determine shell
+                if PLATFORM == "Windows":
+                    shell = os.environ.get("COMSPEC", "cmd.exe")
+                    shell_type = "powershell" if "powershell" in os.environ.get("PSModulePath", "").lower() or "powershell" in shell.lower() else "cmd"
+                else:
+                    shell = os.environ.get("SHELL", "/bin/bash")
+                    shell_type = "unix"
+
+                result = execute_and_handle_history(cmd_to_run, shell_type, shell)
+                
+                if result.stdout:
+                    print(result.stdout, end='')
+                if result.stderr:
+                    print(f"\033[1;31m{result.stderr}\033[0m", file=sys.stderr, end='')
+
+                if result.returncode == 0:
+                    print("\n\033[1;32mCommand executed successfully.\033[0m")
+                    add_to_command_history(cmd_to_run) # Add again to bring it to the top
+                else:
+                    print(f"\n\033[1;31mCommand failed with exit code {result.returncode}.\033[0m")
+            else:
+                print("Execution cancelled.")
+        else:
+            print("Invalid selection.")
+    except ValueError:
+        print("Invalid input. Please enter a number.")
+    except (KeyboardInterrupt, EOFError):
+        print("\nExiting history menu.")
+
+
 def execute_and_handle_history(cmd, shell_type, shell):
     """Saves a command to history and then executes it, capturing output."""
     if not os.environ.get("NOHISTORY"):
@@ -914,6 +993,7 @@ if __name__ == "__main__":
     parser.add_argument("--chat", action="store_true", help="Chat mode.")
     parser.add_argument("--new", action="store_true", help="Clean the chat history.")
     parser.add_argument("--config", action="store_true", help="Configure API key and base URL.")
+    parser.add_argument("--history", action="store_true", help="Show command history and re-run commands.")
     parser.add_argument("text", nargs="*", help="your query to the ai")
 
     args = parser.parse_args()
@@ -924,8 +1004,8 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Check if we have a query (only when not in chat mode)
-    if not args.chat and not args.text:
-        print("Please provide a command to execute or use --config to configure API settings.")
+    if not args.chat and not args.text and not args.history:
+        print("Please provide a command to execute or use --config or --history.")
         print("Examples:")
         print("  ai list all files")
         print("  ai --chat")
@@ -956,6 +1036,11 @@ if __name__ == "__main__":
         client = openai.OpenAI(api_key=api_key)
     
     print(f"Using model: {model_name}")
+
+    # Handle history mode
+    if args.history:
+        manage_command_history()
+        sys.exit(0)
 
     context = args.c or args.C >= 0
     context_files = []
@@ -1093,6 +1178,9 @@ if __name__ == "__main__":
             if result.returncode != 0:
                 print(f"\n\033[1;31mCommand failed with exit code {result.returncode}. Aborting sequence.\033[0m")
                 sys.exit(result.returncode)
+            else:
+                # Add successful command to our history
+                add_to_command_history(cmd)
         
         print("\n\033[1;32mSequence executed successfully.\033[0m")
         sys.exit(0)
@@ -1106,6 +1194,10 @@ if __name__ == "__main__":
     if result.stderr:
         # Print stderr in red
         print(f"\033[1;31m{result.stderr}\033[0m", file=sys.stderr, end='')
+
+    # Add to command history if successful
+    if result.returncode == 0:
+        add_to_command_history(cmd)
 
     # Check for failure and auto-correct if enabled
     autocorrect_mode = get_autocorrect_mode()

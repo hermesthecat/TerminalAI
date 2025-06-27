@@ -2,7 +2,7 @@
 
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
-## New Version (0.6.0)
+## New Version (0.7.0)
 
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
@@ -14,6 +14,7 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - **New:** Centralized configuration via a single `config.ini` file.
 - **New:** Auto-correct on failure: AI suggests a fix when a command fails.
 - **New:** Multi-step command execution for complex tasks.
+- **New:** Interactive command history (`ai --history`) for re-running previous commands.
 
 ### Known Issues
 
@@ -113,6 +114,16 @@ When a command fails (i.e., exits with a non-zero status code), TerminalAI can a
 - **How it works:** If a command fails and produces an error message (`stderr`), TerminalAI sends the failed command and the error message back to the AI, asking for a corrected command.
 - **Confirmation:** You will be shown the suggested fix and asked for confirmation before the new command is executed.
 - **Configuration:** This feature is disabled by default. You can enable it via the `ai --config` menu.
+
+### Interactive Command History
+
+TerminalAI keeps a history of successfully executed commands. You can access and re-run these commands easily.
+
+    ai --history
+
+- **How it works:** This command displays a numbered list of your most recent successful commands.
+- **Execution:** Simply enter the number of the command you wish to execute again and press Enter. You will be asked for confirmation before the command is run.
+- **Benefit:** Quickly reuse complex commands without having to type them again or search through your shell's extensive history.
 
 ### Multi-Step Command Execution
 
