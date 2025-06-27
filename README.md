@@ -2,7 +2,7 @@
 
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
-## New Version (0.8.0)
+## New Version (0.9.0)
 
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
@@ -16,6 +16,7 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - **New:** Multi-step command execution for complex tasks.
 - **New:** Interactive command history (`ai --history`) for re-running previous commands.
 - **New:** Smart Context Analysis (`-c` flag) that reads important project files.
+- **New:** Self-updating mechanism (`ai --update`).
 
 ### Known Issues
 
@@ -74,6 +75,17 @@ This opens an interactive menu with the following options:
 6. Update multi-step commands
 7. Reset to OpenAI defaults
 8. Exit
+
+### Self-Updating
+
+You can easily update TerminalAI to the latest version directly from the command line. This only works if you have installed the program by cloning the git repository.
+
+    ai --update
+
+This command will:
+
+1. Fetch the latest changes from the official GitHub repository.
+2. Re-run the appropriate installation script (`install.sh` or `install.ps1`) to apply any changes and install new dependencies.
 
 ### Command Safety Analysis
 

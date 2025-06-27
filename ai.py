@@ -30,7 +30,7 @@ logging.basicConfig(
     level=logging.ERROR, format="[%(name)s]\t%(asctime)s - %(levelname)s \t %(message)s"
 )
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 PLATFORM = platform.system()
 if PLATFORM == "Linux":
     CACHE_FOLDER = "/opt/TerminalAI"
@@ -850,30 +850,55 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
-def load_command_history():
-    """Loads the command history."""
-    if not os.path.exists(COMMAND_HISTORY_FILE):
-        return []
+def self_update():
+    """Performs a self-update of the script by pulling from git and re-running installation."""
+    print("Attempting to self-update TerminalAI...")
+    
     try:
-        with open(COMMAND_HISTORY_FILE, "rb") as f:
-            history = pickle.load(f)
-            return history if isinstance(history, list) else []
-    except (EOFError, pickle.UnpicklingError):
-        return []
+        script_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+    except NameError:
+        # Fallback for environments where sys.argv[0] is not defined (e.g. some interactive interpreters)
+        script_path = os.getcwd()
 
-def save_command_history(history, limit=100):
-    """Saves the command history."""
-    with open(COMMAND_HISTORY_FILE, "wb") as f:
-        history = history[-limit:]
-        pickle.dump(history, f)
+    # Check if it's a git repository
+    if not os.path.isdir(os.path.join(script_path, '.git')):
+        print("\033[1;31mError: Not a git repository. Cannot self-update.\033[0m")
+        print("This feature only works if you are running TerminalAI from a cloned git repository.")
+        print("Please update manually from https://github.com/hermesthecat/terminalai")
+        sys.exit(1)
+        
+    print(f"Running 'git pull' in '{script_path}'...")
+    
+    try:
+        result = subprocess.run(["git", "pull"], cwd=script_path, capture_output=True, text=True, check=True, encoding='utf-8', errors='ignore')
+        print(result.stdout)
+        
+        if "Already up to date." in result.stdout:
+            print("\033[1;32mTerminalAI is already at the latest version.\033[0m")
+            if input("Do you want to re-run the installation script anyway? [y/N] ").lower() != 'y':
+                sys.exit(0)
+        
+        print("\n\033[1;32mUpdate check complete. Re-running installation script to apply changes...\033[0m\n")
+        
+        if PLATFORM == "Windows":
+            install_script = os.path.join(script_path, "install.ps1")
+            subprocess.call(["powershell", "-ExecutionPolicy", "Bypass", "-File", install_script], shell=False)
+        else: # Linux or MacOS
+            install_script = os.path.join(script_path, "install.sh")
+            if not os.access(install_script, os.X_OK):
+                os.chmod(install_script, 0o755)
+            print("The installation script will be executed. You may be prompted for your password to complete certain steps.")
+            subprocess.call([install_script], shell=False)
+            
+        print("\n\033[1;32mSelf-update process completed.\033[0m")
 
-def add_to_command_history(command):
-    """Adds a successfully executed command to the history."""
-    history = load_command_history()
-    # Avoid adding the same command consecutively
-    if not history or history[-1] != command:
-        history.append(command)
-        save_command_history(history)
+    except subprocess.CalledProcessError as e:
+        print("\033[1;31mError during 'git pull':\033[0m")
+        print(e.stderr)
+        sys.exit(1)
+    except FileNotFoundError:
+        print("\033[1;31mError: 'git' command not found. Please ensure git is installed and in your PATH.\033[0m")
+        sys.exit(1)
 
 
 def manage_command_history():
@@ -1015,6 +1040,7 @@ if __name__ == "__main__":
     parser.add_argument("--new", action="store_true", help="Clean the chat history.")
     parser.add_argument("--config", action="store_true", help="Configure API key and base URL.")
     parser.add_argument("--history", action="store_true", help="Show command history and re-run commands.")
+    parser.add_argument("--update", action="store_true", help="Update TerminalAI to the latest version from git.")
     parser.add_argument("text", nargs="*", help="your query to the ai")
 
     args = parser.parse_args()
@@ -1024,9 +1050,14 @@ if __name__ == "__main__":
         setup_api_configuration()
         sys.exit(0)
 
+    # Handle update mode
+    if args.update:
+        self_update()
+        sys.exit(0)
+
     # Check if we have a query (only when not in chat mode)
     if not args.chat and not args.text and not args.history:
-        print("Please provide a command to execute or use --config or --history.")
+        print("Please provide a command to execute or use one of the flags: --config, --history, --update")
         print("Examples:")
         print("  ai list all files")
         print("  ai --chat")
