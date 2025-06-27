@@ -2,7 +2,7 @@
 
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
-## New Version (0.4.0)
+## New Version (0.5.0)
 
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
@@ -12,6 +12,7 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - **New:** Configurable model selection
 - **New:** Customizable safety patterns via external files
 - **New:** Centralized configuration via a single `config.ini` file.
+- **New:** Auto-correct on failure: AI suggests a fix when a command fails.
 
 ### Known Issues
 
@@ -66,8 +67,9 @@ This opens an interactive menu with the following options:
 2. Update API base URL (for OpenAI-compatible APIs)
 3. Update model name
 4. Update safety mode
-5. Reset to OpenAI defaults
-6. Continue with current settings
+5. Update auto-correct on failure
+6. Reset to OpenAI defaults
+7. Exit
 
 ### Command Safety Analysis
 
@@ -101,6 +103,14 @@ Example of adding custom patterns:
     custom-safe-command\s+  # My custom safe command
 
 Lines starting with `#` are treated as comments and ignored.
+
+### Auto-correct on Failure
+
+When a command fails (i.e., exits with a non-zero status code), TerminalAI can automatically attempt to fix it.
+
+- **How it works:** If a command fails and produces an error message (`stderr`), TerminalAI sends the failed command and the error message back to the AI, asking for a corrected command.
+- **Confirmation:** You will be shown the suggested fix and asked for confirmation before the new command is executed.
+- **Configuration:** This feature is disabled by default. You can enable it via the `ai --config` menu.
 
 ### Custom API Providers
 

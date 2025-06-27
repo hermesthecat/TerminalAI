@@ -30,7 +30,7 @@ logging.basicConfig(
     level=logging.ERROR, format="[%(name)s]\t%(asctime)s - %(levelname)s \t %(message)s"
 )
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 PLATFORM = platform.system()
 if PLATFORM == "Linux":
     CACHE_FOLDER = "/opt/TerminalAI"
@@ -144,6 +144,15 @@ def get_safety_mode():
         return 0
 
 
+def get_autocorrect_mode():
+    """Reads the auto-correct setting from config.ini."""
+    config = get_config()
+    try:
+        return config.getboolean('Settings', 'autocorrect', fallback=False)
+    except (ValueError, configparser.NoSectionError):
+        return False
+
+
 def analyze_command_safety(cmd):
     """
     Analyzes a command for safety risks
@@ -212,22 +221,26 @@ def setup_api_configuration():
     current_base_url = config.get('API', 'base_url', fallback='')
     current_model = config.get('Settings', 'model', fallback='gpt-4o-mini')
     current_safety_mode = get_safety_mode()
+    current_autocorrect_mode = get_autocorrect_mode()
 
     print(f"Current API key: {current_key[:4]}...{current_key[-4:] if len(current_key) > 8 else ''}")
     print(f"Current API base URL: {current_base_url if current_base_url else 'Default (OpenAI)'}")
     print(f"Current model: {current_model}")
     safety_mode_desc = "Always ask for confirmation" if current_safety_mode == 0 else "Auto-run safe commands"
     print(f"Current safety mode: {safety_mode_desc}")
+    autocorrect_desc = "Enabled" if current_autocorrect_mode else "Disabled"
+    print(f"Current auto-correct mode: {autocorrect_desc}")
     
     print("\nOptions:")
     print("1. Update API key")
     print("2. Update API base URL (for OpenAI-compatible APIs)")
     print("3. Update model name")
     print("4. Update safety mode")
-    print("5. Reset to OpenAI defaults")
-    print("6. Exit")
+    print("5. Update auto-correct on failure")
+    print("6. Reset to OpenAI defaults")
+    print("7. Exit")
     
-    choice = input("\nSelect option (1-6): ").strip()
+    choice = input("\nSelect option (1-7): ").strip()
     
     if choice == "1":
         new_key = input("Enter new API key: ").strip()
@@ -297,15 +310,35 @@ def setup_api_configuration():
             print("Invalid input. Safety mode not changed.")
     
     elif choice == "5":
+        print("\nAuto-correct on Failure:")
+        print("Enable this to let AI try to fix commands that fail.")
+        
+        try:
+            enable_str = input(f"Enable auto-correct? (currently {'Enabled' if current_autocorrect_mode else 'Disabled'}) [y/n]: ").strip().lower()
+            if enable_str in ['y', 'yes']:
+                config.set('Settings', 'autocorrect', 'True')
+                save_config(config)
+                print("Auto-correct enabled.")
+            elif enable_str in ['n', 'no']:
+                config.set('Settings', 'autocorrect', 'False')
+                save_config(config)
+                print("Auto-correct disabled.")
+            else:
+                print("Invalid input. Setting not changed.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    
+    elif choice == "6":
         # Reset to defaults
         if config.has_option('API', 'base_url'):
             config.remove_option('API', 'base_url')
         config.set('Settings', 'model', 'gpt-4o-mini')
         config.set('Settings', 'safety_mode', '0')
+        config.set('Settings', 'autocorrect', 'False')
         save_config(config)
-        print("Reset to OpenAI defaults (gpt-4o-mini, always ask). API key kept unchanged.")
+        print("Reset to OpenAI defaults (gpt-4o-mini, always ask, auto-correct off). API key kept unchanged.")
     
-    elif choice == "6":
+    elif choice == "7":
         print("Exiting configuration menu.")
     
     else:
@@ -754,6 +787,64 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
+def execute_and_handle_history(cmd, shell_type, shell):
+    """Saves a command to history and then executes it, capturing output."""
+    if not os.environ.get("NOHISTORY"):
+        # retrieve the history file of the shell depending on the shell
+        if PLATFORM == "Windows":
+            if shell_type == "powershell":
+                # PowerShell history
+                history_file = get_powershell_history_path()
+                new_history_line = f"{cmd}\n"
+            else:
+                # CMD doesn't have persistent history by default
+                history_file = None
+                new_history_line = None
+        else:
+            if "/bin/bash" in shell:
+                history_file = os.path.expanduser("~/.bash_history")
+                new_history_line = f"{cmd}\n"
+            elif "/bin/zsh" in shell:
+                history_file = os.environ.get("HISTFILE", os.path.expanduser("~/.zsh_history")) 
+                
+                # Get UNIX timestamp
+                timestamp = int(time.time())
+                new_history_line = f": {int(timestamp)}:0;{cmd}\n"
+            elif "/bin/fish" in shell:
+                # Untested
+                history_file = os.path.expanduser("~/.local/share/fish/fish_history")
+                new_history_line = f"{cmd}\n"
+            else:
+                history_file = None
+                new_history_line = None
+                # log.warning("Shell %s not supported. History will not be saved." % shell)
+
+        # save the command to the history
+        if history_file is not None and new_history_line is not None:
+            try:
+                # Ensure directory exists for PowerShell history
+                if PLATFORM == "Windows" and shell_type == "powershell":
+                    os.makedirs(os.path.dirname(history_file), exist_ok=True)
+                with open(history_file, "a", encoding="utf-8") as f:
+                    f.write(new_history_line)
+            except IOError as e:
+                log.error("Failed to save history: %s" % e)
+
+    # Execute the command in the current shell and return the result
+    try:
+        if PLATFORM == "Windows":
+            if shell_type == "powershell":
+                return subprocess.run(["powershell", "-Command", cmd], shell=False, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            else:
+                return subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+        else:
+            return subprocess.run(cmd, shell=True, executable=shell, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+    except FileNotFoundError:
+        # This can happen if the command itself is not found, e.g. "mydoesnotexist"
+        # We can create a mock result object to handle this gracefully.
+        return subprocess.CompletedProcess(args=cmd, returncode=127, stdout="", stderr=f"Command not found: {cmd.split()[0]}")
+
+
 if __name__ == "__main__":
     
     # get the command from the user
@@ -918,52 +1009,47 @@ if __name__ == "__main__":
             shell = "/bin/bash"
         shell_type = "unix"
 
-    if not os.environ.get("NOHISTORY"):
-        # retrieve the history file of the shell depending on the shell
-        if PLATFORM == "Windows":
-            if shell_type == "powershell":
-                # PowerShell history
-                history_file = get_powershell_history_path()
-                new_history_line = f"{cmd}\n"
+    # Execute command, save history, and capture output
+    result = execute_and_handle_history(cmd, shell_type, shell)
+
+    if result.stdout:
+        print(result.stdout, end='')
+    if result.stderr:
+        # Print stderr in red
+        print(f"\033[1;31m{result.stderr}\033[0m", file=sys.stderr, end='')
+
+    # Check for failure and auto-correct if enabled
+    autocorrect_mode = get_autocorrect_mode()
+    if result.returncode != 0 and autocorrect_mode:
+        print(f"\n\033[1;33mCommand failed with exit code {result.returncode}.\033[0m")
+        # Only try to fix if there's an error message to provide context
+        if result.stderr:
+            print("AI is attempting to find a fix...")
+            
+            fixed_cmd = get_fixed_cmd(client, cmd, result.stderr)
+            
+            # Analyze fixed command safety
+            is_safe, safety_reason = analyze_command_safety(fixed_cmd)
+            if is_safe:
+                print(f"Safety assessment: \033[1;32mSafe\033[0m - {safety_reason}")
             else:
-                # CMD doesn't have persistent history by default
-                history_file = None
-                new_history_line = None
-        else:
-            if "/bin/bash" in shell:
-                history_file = os.path.expanduser("~/.bash_history")
-                new_history_line = f"{cmd}\n"
-            elif "/bin/zsh" in shell:
-                history_file = os.environ.get("HISTFILE", os.path.expanduser("~/.zsh_history")) 
+                print(f"Safety assessment: \033[1;31mPotentially dangerous\033[0m - {safety_reason}")
+
+            print(f"\nAI suggests the following fix:\n\033[1;32m{fixed_cmd}\033[0m\n")
+            
+            if input("Do you want to execute this command? [Y/n] ").lower() != "n":
+                print("Executing fixed command...")
+                fixed_result = execute_and_handle_history(fixed_cmd, shell_type, shell)
+                if fixed_result.stdout:
+                    print(fixed_result.stdout, end='')
+                if fixed_result.stderr:
+                    print(f"\033[1;31m{fixed_result.stderr}\033[0m", file=sys.stderr, end='')
                 
-                # Get UNIX timestamp
-                timestamp = int(time.time())
-                new_history_line = f": {int(timestamp)}:0;{cmd}\n"
-            elif "/bin/fish" in shell:
-                # Untested
-                history_file = os.path.expanduser("~/.local/share/fish/fish_history")
-                new_history_line = f"{cmd}\n"
+                if fixed_result.returncode == 0:
+                    print("\n\033[1;32mFixed command executed successfully.\033[0m")
+                else:
+                    print(f"\n\033[1;31mFixed command also failed with exit code {fixed_result.returncode}.\033[0m")
             else:
-                history_file = None
-                new_history_line = None
-                # log.warning("Shell %s not supported. History will not be saved." % shell)
-
-        # save the command to the history
-        if history_file is not None and new_history_line is not None:
-            try:
-                # Ensure directory exists for PowerShell history
-                if PLATFORM == "Windows" and shell_type == "powershell":
-                    os.makedirs(os.path.dirname(history_file), exist_ok=True)
-                with open(history_file, "a", encoding="utf-8") as f:
-                    f.write(new_history_line)
-            except IOError as e:
-                log.error("Failed to save history: %s" % e)
-
-    # Execute the command in the current shell
-    if PLATFORM == "Windows":
-        if shell_type == "powershell":
-            subprocess.call(["powershell", "-Command", cmd], shell=False)
+                print("No command executed.")
         else:
-            subprocess.call(cmd, shell=True)
-    else:
-        subprocess.call(cmd, shell=True, executable=shell)
+            print("Command failed but produced no error output. Cannot attempt a fix.")
