@@ -47,7 +47,7 @@ This creates a portable `ai.exe` in the `dist` folder that works without a Pytho
 
 First time you run ai, it will install dependencies in a virtual environment and it will ask for the key to the api.
 
-You can get the key from [here](https://platform.openai.com/api-keys)
+You can get your API key from the [OpenAI API keys page](https://platform.openai.com/api-keys).
 
 ## Usage
 
