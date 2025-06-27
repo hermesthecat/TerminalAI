@@ -1,0 +1,21 @@
+[API]
+; API anahtarınızı buraya girin. `ai --config` komutuyla da ayarlayabilirsiniz.
+key = YOUR_OPENAI_API_KEY
+
+; OpenAI uyumlu özel bir API kullanıyorsanız (Ollama, LocalAI vb.), temel URL'yi buraya girin.
+; Varsayılan OpenAI API'si için bu satırı yorumda bırakın veya boş bırakın.
+; base_url = http://localhost:11434/v1
+
+[Settings]
+; Kullanılacak modelin adı. `ai --config` menüsünden popüler modelleri görebilirsiniz.
+model = gpt-4o-mini
+
+; Komut güvenlik modu.
+; 0 = Her komut için onay iste (varsayılan).
+; 1 = Güvenli olarak değerlendirilen komutları otomatik çalıştır.
+safety_mode = 0
+
+; Başarısız komutlar için otomatik düzeltme özelliği.
+; True = Etkin. AI, başarısız bir komutu düzeltmeye çalışır.
+; False = Devre dışı (varsayılan).
+autocorrect = False 
