@@ -1,7 +1,9 @@
 # TerminalAI
+
 This is a simple bash script that uses the OpenAI API to generate commands based on the user input.
 
 ## New Version (0.3.1)
+
 - Updated to latest OpenAI API
 - Now using GPT-4o-mini for extra cost efficiency
 - Added Windows support with PowerShell and CMD compatibility
@@ -11,6 +13,7 @@ This is a simple bash script that uses the OpenAI API to generate commands based
 - **New:** Customizable safety patterns via external files
 
 ### Known Issues
+
 - History file updates automatically, but the history of the session does not.
 
 e.g., in zsh, you need to run `fc -R` to update the history file.
@@ -18,12 +21,14 @@ e.g., in zsh, you need to run `fc -R` to update the history file.
 ## Install
 
 ### Linux/macOS
+
     git clone https://github.com/hermesthecat/terminalai
     cd terminalai
     chmod +x install.sh
     ./install.sh
 
 ### Windows
+
     git clone https://github.com/hermesthecat/terminalai
     cd terminalai
     powershell -ExecutionPolicy Bypass -File install.ps1
@@ -32,6 +37,7 @@ Or using PowerShell directly:
     .\install.ps1
 
 #### Windows Standalone Executable
+
 For systems without Python, you can build a standalone executable:
 
     # Install first, then build executable
@@ -42,17 +48,16 @@ Or build separately:
 
 This creates a portable `ai.exe` that works without Python installation.
 
-First time you run ai, it will install dependencies in a virtual environment and it will ask for the key to the api. 
+First time you run ai, it will install dependencies in a virtual environment and it will ask for the key to the api.
 
 You can get the key from [here](https://platform.openai.com/api-keys)
 
-
 ## Usage
+
 `ai <what you want to do>`
 
-![Demo gif](https://i.postimg.cc/VNqZh0tV/demo.gif)
-
 ### Configuration
+
 You can configure API settings, model selection, and safety options:
 
 ```bash
@@ -60,6 +65,7 @@ ai --config
 ```
 
 This opens an interactive menu with the following options:
+
 1. Update API key
 2. Update API base URL (for OpenAI-compatible APIs)
 3. Update model name
@@ -68,16 +74,19 @@ This opens an interactive menu with the following options:
 6. Continue with current settings
 
 ### Command Safety Analysis
+
 TerminalAI now analyzes commands for safety before execution:
 
 - **Safety Mode 0 (Default):** Always asks for confirmation before executing commands
 - **Safety Mode 1:** Automatically executes safe commands, asks for confirmation on potentially dangerous ones
 
 Each command is analyzed and marked as either:
+
 - **Safe:** Basic system information, navigation, or read-only commands
 - **Potentially Dangerous:** System modifications, privilege escalation, network changes, etc.
 
 #### Customizable Safety Patterns
+
 You can now customize the safety patterns used to analyze commands by editing two files:
 
 - **dangerous_patterns.txt**: Contains regex patterns for potentially dangerous commands
@@ -86,7 +95,9 @@ You can now customize the safety patterns used to analyze commands by editing tw
 These files are created automatically with default patterns when the program runs for the first time. You can add, remove, or modify patterns to suit your specific needs.
 
 Example of adding custom patterns:
-```
+
+```bash
+
 # In dangerous_patterns.txt
 # Add custom dangerous pattern
 custom-dangerous-command\s+  # My custom dangerous command
@@ -99,16 +110,18 @@ custom-safe-command\s+  # My custom safe command
 Lines starting with `#` are treated as comments and ignored.
 
 ### Custom API Providers
+
 You can use TerminalAI with various OpenAI-compatible APIs:
 
 - **OpenAI** (default)
 - **Azure OpenAI**
-- **LocalAI** (http://localhost:8080/v1)
-- **Ollama** (http://localhost:11434/v1)
-- **LM Studio** (http://localhost:1234/v1)
+- **LocalAI** (<http://localhost:8080/v1>)
+- **Ollama** (<http://localhost:11434/v1>)
+- **LM Studio** (<http://localhost:1234/v1>)
 - Any other OpenAI-compatible API
 
 ### Model Selection
+
 Choose from various models depending on your API provider:
 
 - **OpenAI:** gpt-4o-mini (default), gpt-4o, gpt-4-turbo, gpt-3.5-turbo
@@ -116,6 +129,7 @@ Choose from various models depending on your API provider:
 - **Azure OpenAI:** Your deployment name
 
 ### Context
+
 `ai` is aware of the distro used. It will use the correct package manager to install dependencies.
 
 On Windows, it detects Windows version and uses appropriate Windows commands (cmd, PowerShell, Windows-specific tools).
@@ -124,10 +138,8 @@ On Windows, it detects Windows version and uses appropriate Windows commands (cm
 
 `-e` option will generate an explanation of the command. This will significantly increase the number of tokens used.
 
-
-![Context Demo gif](https://i.postimg.cc/gjfFWs3K/context.gif)
-
 ### Windows-Specific Features
+
 - Supports both CMD and PowerShell environments
 - Automatically detects PowerShell and uses appropriate commands
 - Uses Windows-specific system commands (tasklist, net, ipconfig, netsh, etc.)
@@ -136,9 +148,10 @@ On Windows, it detects Windows version and uses appropriate Windows commands (cm
 - **Standalone executable option**: Build `ai.exe` for distribution without Python dependency
 
 #### Building Standalone Executable
+
 The Windows version can be compiled into a standalone executable using PyInstaller:
 
-```powershell
+```bash
 # Build with default settings (single file, optimized)
 .\build_exe.ps1
 
@@ -153,10 +166,12 @@ The Windows version can be compiled into a standalone executable using PyInstall
 ```
 
 The executable build creates:
+
 - `dist/ai.exe` - Standalone executable (~40-60MB)
 - `terminalai-windows-portable.zip` - Distribution package with executable and documentation
 
 **Benefits of standalone executable:**
+
 - No Python installation required
 - Single file distribution
 - Faster startup (no virtual environment activation)
@@ -164,10 +179,10 @@ The executable build creates:
 - Ideal for corporate environments with restricted software installation
 
 ### Configuration Paths
+
 TerminalAI now stores configuration in these locations:
 
 - **Linux:** /opt/TerminalAI
 - **macOS:** /opt/TerminalAI
 - **Windows:** C:/TerminalAI
 - **Other platforms:** /opt/TerminalAI
-
