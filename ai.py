@@ -474,6 +474,34 @@ def clean_history():
         os.unlink(path)
 
 
+def get_powershell_history_path():
+    """Gets the PowerShell history file path dynamically."""
+    # This function is only relevant on Windows.
+    if PLATFORM != "Windows":
+        return None
+    
+    try:
+        # Use PowerShell to get the correct history path from PSReadLine
+        ps_command = "(Get-PSReadlineOption).HistorySavePath"
+        # Using -NoProfile for a faster and cleaner execution
+        path = subprocess.check_output(
+            ["powershell", "-NoProfile", "-Command", ps_command], 
+            text=True, 
+            stderr=subprocess.DEVNULL
+        ).strip()
+        
+        # If the command returns an empty string, PSReadLine might not be configured to save history.
+        if not path:
+            log.warning("PSReadLine HistorySavePath is not set. Falling back to default path.")
+            return os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine/ConsoleHost_history.txt")
+            
+        return path
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Fallback to the default path in case of any error (e.g., powershell not in PATH or PSReadLine module not available)
+        log.warning("Could not dynamically determine PowerShell history path. Falling back to default.")
+        return os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine/ConsoleHost_history.txt")
+
+
 def chat(client, prompt):
     history = load_history()
     # esitmate the length of the history in words
@@ -895,7 +923,7 @@ if __name__ == "__main__":
         if PLATFORM == "Windows":
             if shell_type == "powershell":
                 # PowerShell history
-                history_file = os.path.expanduser("~/AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine/ConsoleHost_history.txt")
+                history_file = get_powershell_history_path()
                 new_history_line = f"{cmd}\n"
             else:
                 # CMD doesn't have persistent history by default
