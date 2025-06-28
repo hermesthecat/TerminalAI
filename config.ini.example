@@ -1,26 +1,26 @@
 [API]
-; API anahtarınızı buraya girin. `ai --config` komutuyla da ayarlayabilirsiniz.
+; Enter your API key here. You can also set this via the `ai --config` command.
 key = YOUR_OPENAI_API_KEY
 
-; OpenAI uyumlu özel bir API kullanıyorsanız (Ollama, LocalAI vb.), temel URL'yi buraya girin.
-; Varsayılan OpenAI API'si için bu satırı yorumda bırakın veya boş bırakın.
+; If you are using a custom OpenAI-compatible API (like Ollama, LocalAI, etc.), enter the base URL here.
+; For the default OpenAI API, leave this line commented out or empty.
 ; base_url = http://localhost:11434/v1
 
 [Settings]
-; Kullanılacak modelin adı. `ai --config` menüsünden popüler modelleri görebilirsiniz.
+; The name of the model to use. You can see popular models via the `ai --config` menu.
 model = gpt-4o-mini
 
-; Komut güvenlik modu.
-; 0 = Her komut için onay iste (varsayılan).
-; 1 = Güvenli olarak değerlendirilen komutları otomatik çalıştır.
+; Command safety mode.
+; 0 = Always ask for confirmation before executing (default).
+; 1 = Auto-run commands that are considered safe.
 safety_mode = 0
 
-; Başarısız komutlar için otomatik düzeltme özelliği.
-; True = Etkin. AI, başarısız bir komutu düzeltmeye çalışır.
-; False = Devre dışı (varsayılan).
+; Auto-correct feature for failed commands.
+; True = Enabled. The AI will try to fix a failed command.
+; False = Disabled (default).
 autocorrect = False
 
-; Çok adımlı görevleri etkinleştir.
-; True = AI, birden çok adımdan oluşan istekler için bir komut dizisi döndürebilir.
-; False = AI, her zaman tek bir komut döndürür (varsayılan).
+; Enable multi-step tasks.
+; True = The AI can return a sequence of commands for complex requests.
+; False = The AI will always return a single command (default).
 multi_step = False 

@@ -59,10 +59,10 @@ function Write-Error {
     exit 1
 }
 
-Write-Host "TerminalAI Kurulumu Başlatılıyor..." -ForegroundColor Green
+Write-Host "Starting TerminalAI Installation..." -ForegroundColor Green
 
 # 1. Python kontrolü
-Write-Step "Adım 1: Python Sürümü Kontrol Ediliyor"
+Write-Step "Step 1: Checking Python Version"
 try {
     $pythonVersion = python --version 2>&1
     if ($pythonVersion -match "Python (\d+)\.(\d+)\.(\d+)") {
@@ -70,46 +70,46 @@ try {
         $minor = [int]$matches[2]
         
         if ($major -lt 3 -or ($major -eq 3 -and $minor -lt 7)) {
-            Write-Error "Python 3.7 veya üstü gereklidir. Mevcut sürüm: $pythonVersion"
+            Write-Error "Python 3.7 or higher is required. Current version: $pythonVersion"
         }
-        Write-Success "Uyumlu Python sürümü bulundu: $pythonVersion"
+        Write-Success "Compatible Python version found: $pythonVersion"
     } else {
-        Write-Error "Python bulunamadı veya sürüm tespit edilemedi."
+        Write-Error "Python not found or version could not be determined."
     }
 } catch {
-    Write-Host "Python yüklü değil veya PATH içinde değil." -ForegroundColor Red
-    Write-Host "Lütfen https://python.org adresinden Python 3.7+ sürümünü yükleyin." -ForegroundColor Yellow
+    Write-Host "Python is not installed or not in PATH." -ForegroundColor Red
+    Write-Host "Please install Python 3.7+ from https://python.org" -ForegroundColor Yellow
     exit 1
 }
 
 # 2. Sanal ortam oluşturma
-Write-Step "Adım 2: Python Sanal Ortamı Hazırlanıyor"
+Write-Step "Step 2: Preparing Python Virtual Environment"
 $ENV_PATH = "$env:USERPROFILE\.virtualenvs\terminalai"
 if (-not (Test-Path $ENV_PATH)) {
-    Write-Info "Sanal ortam oluşturuluyor: $ENV_PATH"
+    Write-Info "Creating virtual environment: $ENV_PATH"
     python -m venv $ENV_PATH
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Sanal ortam oluşturulamadı."
+        Write-Error "Failed to create virtual environment."
     }
-    Write-Success "Sanal ortam başarıyla oluşturuldu."
+    Write-Success "Virtual environment created successfully."
 } else {
-    Write-Success "Sanal ortam zaten mevcut: $ENV_PATH"
+    Write-Success "Virtual environment already exists: $ENV_PATH"
 }
 
 # 3. Bağımlılıkları yükleme
-Write-Step "Adım 3: Gerekli Python Paketleri Yükleniyor"
-Write-Info "Sanal ortam aktive ediliyor ve bağımlılıklar yükleniyor..."
+Write-Step "Step 3: Installing Required Python Packages"
+Write-Info "Activating virtual environment and installing dependencies..."
 & "$ENV_PATH\Scripts\activate.ps1"
 pip install --upgrade pip | Out-Null
 pip install -r "$SCRIPT_DIR\requirements.txt"
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Bağımlılıklar yüklenemedi."
+    Write-Error "Failed to install dependencies."
 }
-Write-Success "Tüm bağımlılıklar başarıyla yüklendi."
+Write-Success "All dependencies installed successfully."
 
 # 4. ai.bat sarmalayıcı (wrapper) oluşturma
-Write-Step "Adım 4: Komut Sarmalayıcı (ai.bat) Oluşturuluyor"
+Write-Step "Step 4: Creating Command Wrapper (ai.bat)"
 $batchContent = @"
 @echo off
 set ENV_PATH=%USERPROFILE%\.virtualenvs\terminalai
@@ -126,45 +126,45 @@ python "%COMMAND_PATH%" %*
 
 $batchFile = "$SCRIPT_DIR\ai.bat"
 $batchContent | Out-File -FilePath $batchFile -Encoding ASCII
-Write-Success "ai.bat dosyası oluşturuldu: $batchFile"
+Write-Success "ai.bat file created: $batchFile"
 
 # 5. PATH ortam değişkenine ekleme
-Write-Step "Adım 5: PATH Ortam Değişkeni Güncelleniyor"
+Write-Step "Step 5: Updating PATH Environment Variable"
 $currentPath = [Environment]::GetEnvironmentVariable("PATH", [EnvironmentVariableTarget]::User)
 if ($currentPath -notlike "*$SCRIPT_DIR*") {
     $newPath = "$currentPath;$SCRIPT_DIR"
     [Environment]::SetEnvironmentVariable("PATH", $newPath, [EnvironmentVariableTarget]::User)
-    Write-Success "Kullanıcı PATH değişkenine eklendi: $SCRIPT_DIR"
-    Write-Info "Değişikliğin etkili olması için terminali yeniden başlatmanız gerekebilir."
+    Write-Success "Added to user PATH: $SCRIPT_DIR"
+    Write-Info "You may need to restart your terminal for the changes to take effect."
 } else {
-    Write-Success "Dizin zaten PATH içinde mevcut: $SCRIPT_DIR"
+    Write-Success "Directory already in PATH: $SCRIPT_DIR"
 }
 
 # Build executable if requested
 if ($BuildExe) {
-    Write-Step "Adım 6: Taşınabilir EXE Dosyası Oluşturuluyor (İsteğe Bağlı)"
+    Write-Step "Step 6: Building Standalone EXE (Optional)"
 
     # PyInstaller kontrolü
-    Write-Info "PyInstaller kontrol ediliyor..."
+    Write-Info "Checking for PyInstaller..."
     try {
         pyinstaller --version | Out-Null
-        Write-Success "PyInstaller zaten yüklü."
+        Write-Success "PyInstaller is already installed."
     } catch {
-        Write-Info "PyInstaller yükleniyor..."
+        Write-Info "Installing PyInstaller..."
         pip install pyinstaller
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "PyInstaller yüklenemedi."
+            Write-Error "Failed to install PyInstaller."
         }
-        Write-Success "PyInstaller başarıyla yüklendi."
+        Write-Success "PyInstaller installed successfully."
     }
 
     # Temizlik
     if ($Clean) {
-        Write-Info "Eski derleme dosyaları temizleniyor..."
-        if (Test-Path $BUILD_DIR) { Remove-Item -Recurse -Force $BUILD_DIR; Write-Info "Silindi: $BUILD_DIR" }
-        if (Test-Path $DIST_DIR) { Remove-Item -Recurse -Force $DIST_DIR; Write-Info "Silindi: $DIST_DIR" }
-        if (Test-Path "$SCRIPT_DIR\ai.spec") { Remove-Item "$SCRIPT_DIR\ai.spec"; Write-Info "Silindi: ai.spec" }
-        Write-Success "Temizlik tamamlandı."
+        Write-Info "Cleaning old build files..."
+        if (Test-Path $BUILD_DIR) { Remove-Item -Recurse -Force $BUILD_DIR; Write-Info "Deleted: $BUILD_DIR" }
+        if (Test-Path $DIST_DIR) { Remove-Item -Recurse -Force $DIST_DIR; Write-Info "Deleted: $DIST_DIR" }
+        if (Test-Path "$SCRIPT_DIR\ai.spec") { Remove-Item "$SCRIPT_DIR\ai.spec"; Write-Info "Deleted: ai.spec" }
+        Write-Success "Cleaning complete."
     }
 
     # PyInstaller spec dosyası
@@ -233,7 +233,7 @@ exe = EXE(
     }
     
     # Derleme
-    Write-Info "EXE dosyası oluşturuluyor... (Bu işlem biraz zaman alabilir)"
+    Write-Info "Building EXE file... (This may take a while)"
     if ($OneFile) {
         pyinstaller --onefile --console ai.py
     } else {
@@ -241,62 +241,63 @@ exe = EXE(
     }
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "EXE oluşturma işlemi başarısız oldu!"
+        Write-Error "EXE build process failed!"
     }
 
     # Sonuç
     $exePath = "$DIST_DIR\ai.exe"
     if (Test-Path $exePath) {
         $fileSize = [math]::Round((Get-Item $exePath).Length / 1MB, 2)
-        Write-Success "EXE başarıyla oluşturuldu!"
-        Write-Info "Dosya: $exePath"
-        Write-Info "Boyut: $fileSize MB"
+        Write-Success "EXE built successfully!"
+        Write-Info "File: $exePath"
+        Write-Info "Size: $fileSize MB"
         
         # Test
-        Write-Info "Oluşturulan EXE test ediliyor..."
+        Write-Info "Testing the created EXE..."
         try {
             & $exePath "--help" | Out-Null
-            Write-Success "EXE testi başarılı."
+            Write-Success "EXE test successful."
         } catch {
-            Write-Host "[UYARI] EXE testi başarısız oldu." -ForegroundColor Yellow
+            Write-Host "[WARNING] EXE test failed." -ForegroundColor Yellow
         }
         
         # C:\TerminalAI dizinine kopyalama
-        Write-Step "Adım 7: EXE Dosyası Sistem Geneli Kullanım İçin Kopyalanıyor"
+        Write-Step "Step 7: Copying EXE for System-Wide Use"
         if (-not (Test-Path $INSTALL_DIR)) {
-            Write-Info "Dizin oluşturuluyor: $INSTALL_DIR"
+            Write-Info "Creating directory: $INSTALL_DIR"
             New-Item -ItemType Directory -Path $INSTALL_DIR -Force | Out-Null
-            Write-Success "Dizin başarıyla oluşturuldu."
+            Write-Success "Directory created successfully."
         }
         
-        Write-Info "ai.exe dosyası $INSTALL_DIR dizinine kopyalanıyor..."
+        Write-Info "Copying ai.exe to $INSTALL_DIR..."
         Copy-Item -Path $exePath -Destination $INSTALL_DIR -Force
         Copy-Item "$SCRIPT_DIR\dangerous_patterns.txt" "$INSTALL_DIR\dangerous_patterns.txt" -Force
         Copy-Item "$SCRIPT_DIR\safe_patterns.txt" "$INSTALL_DIR\safe_patterns.txt" -Force
-        
+        Write-Success "Copying complete."
+
         # C:\TerminalAI'ı PATH'e ekleme
-        Write-Info "Sistem PATH değişkeni güncelleniyor..."
+        Write-Info "Updating system PATH variable..."
         $machinePath = [Environment]::GetEnvironmentVariable("PATH", [EnvironmentVariableTarget]::Machine)
         if ($machinePath -notlike "*$INSTALL_DIR*") {
             $newMachinePath = "$machinePath;$INSTALL_DIR"
             # Bu komut yönetici izni gerektirir.
             try {
                 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Session Manager\Environment' -Name 'Path' -Value $newMachinePath
-                Write-Success "Sistem PATH değişkenine eklendi: $INSTALL_DIR"
-                Write-Info "Değişikliğin etkili olması için terminali yeniden başlatmanız gerekebilir."
+                Write-Success "Added to system PATH: $INSTALL_DIR"
+                Write-Info "You may need to restart your terminal for the changes to take effect."
             } catch {
-                Write-Host "[UYARI] Sistem PATH'i güncellenemedi. Lütfen PowerShell'i yönetici olarak çalıştırın veya manuel olarak ekleyin: $INSTALL_DIR" -ForegroundColor Yellow
+                Write-Host "[WARNING] Could not update system PATH. Please run PowerShell as Administrator or add the directory manually: $INSTALL_DIR" -ForegroundColor Yellow
             }
         } else {
-            Write-Success "Dizin zaten sistem PATH içinde mevcut: $INSTALL_DIR"
+            Write-Success "Directory already in system PATH: $INSTALL_DIR"
         }
     } else {
-        Write-Error "Oluşturulan EXE dosyası bulunamadı: $exePath"
+        Write-Error "Created EXE file not found: $exePath"
     }
 }
 
-Write-Host "`nKurulum Tamamlandı!" -ForegroundColor Green
-Write-Host "Kullanmaya başlamak için yeni bir terminal açın ve 'ai <sorunuz>' yazın."
+Write-Host "`nInstallation Complete!" -ForegroundColor Green
+Write-Host "To get started, open a new terminal and type 'ai <your query>'."
 
 Write-Host ""
 Write-Host "Note: You'll be prompted for your OpenAI API key on first run" -ForegroundColor Yellow
