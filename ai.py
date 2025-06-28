@@ -403,8 +403,7 @@ def get_context_files():
                 try:
                     with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read(MAX_CONTENT_LENGTH)
-                        context_prompt += f"\nThe content of '{filename}' is:\n---
-{content}\n"
+                        context_prompt += "\nThe content of " + repr(filename) + " is:\n---\n" + content + "\n"
                         if len(content) == MAX_CONTENT_LENGTH:
                             context_prompt += "... (file content truncated)\n"
                         context_prompt += "---\n"
